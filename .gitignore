@@ -28,3 +28,6 @@ proguard/
 *.iws
 .idea/
 
+# Packaged files
+*.jar
+
