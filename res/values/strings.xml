@@ -6,5 +6,7 @@
     <string name="hello_world">Hello world!</string>
     <string name="connect">Conectar</string>
     <string name="sensorTest">Probar Sensores</string>
+    <string name="available_sensorTxt">Available Sensor List</string>
+    <string name="sensor_valuesTxt">Live Sensor Values</string>
 
 </resources>
