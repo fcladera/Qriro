@@ -22,22 +22,27 @@
                    android:text="@string/available_sensorTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
-               <Button
+               <ToggleButton
                    android:id="@+id/testSensors"
                    android:layout_width="fill_parent"
                    android:layout_height="wrap_content"
-                   android:text="@string/sensorTest" />
+                   android:textOff="@string/sensorTest_OFF" 
+                   android:textOn="@string/sensorTest_ON" 
+                   android:onClick="onToggleClicked"
+                   />
 
                <Button
                    android:id="@+id/connect"
                    android:layout_width="fill_parent"
                    android:layout_height="wrap_content"
-                   android:text="@string/connect" />
+                   android:text="@string/connect" 
+                   android:onClick="onClick"/>
 
                <TextView
                    android:id="@+id/AccelSensorValue"
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
+                   android:layout_marginTop="20px"
                    android:text="@string/accelSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
@@ -45,8 +50,10 @@
                    android:id="@+id/GyroSensorValue"
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
+                   android:layout_marginTop="20px"
                    android:text="@string/gyroSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
+
 
            </LinearLayout>
  		

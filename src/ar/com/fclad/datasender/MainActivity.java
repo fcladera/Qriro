@@ -9,16 +9,19 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
+import android.util.Log;
 import android.view.Menu;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
 	private int i = 0;
-	private float accumulated;
+	private boolean testingSensors;
 	
 	private TextView accelSensorValues, gyroSensorValues;
 	
@@ -39,23 +42,40 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		TextView sensorInfo = (TextView) findViewById(R.id.availableSensors);
 		
+		testingSensors = ((ToggleButton)findViewById(R.id.testSensors)).isChecked();
+		
 		sensorInfo.setText("GYRO\n");
-		List<Sensor> deviceGyro= sensorManager.getSensorList(Sensor.TYPE_GYROSCOPE);
-		for(i=0;i<deviceGyro.size();i++){
-			sensorInfo.append(deviceGyro.get(i).getName()+"\t");
-			sensorInfo.append(Float.valueOf(deviceGyro.get(i).getResolution()).toString());
-			sensorInfo.append("\n");
-		}
+		Sensor deviceGyro= sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+		sensorInfo.append(deviceGyro.getName()+"\n");
+		sensorInfo.append(Float.valueOf(deviceGyro.getResolution()).toString());
+		sensorInfo.append("\n");
+		
 		
 		sensorInfo.append("ACCEL\n");
-		List<Sensor> deviceAccel= sensorManager.getSensorList(Sensor.TYPE_LINEAR_ACCELERATION);
-		for(i=0;i<deviceAccel.size();i++){
-			sensorInfo.append(deviceAccel.get(i).getName()+"\t");
-			sensorInfo.append(Float.valueOf(deviceAccel.get(i).getResolution()).toString());
-			sensorInfo.append("\n");
+		Sensor deviceAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+		sensorInfo.append(deviceAccel.getName()+"\n");
+		sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
+		sensorInfo.append("\n");
+		
+		
+		
+	}
+	
+	public void onToggleClicked(View view){	
+		switch (view.getId()){
+		case R.id.testSensors:
+			Log.w("MainActivity","Toggled testSensor button");
+			testingSensors = ((ToggleButton) view).isChecked();
+		return;
 		}
-		
-		
+	}
+	
+	public void onClick(View view){
+		switch(view.getId()){
+		case R.id.connect:
+			Log.w("MainActivity","Clicked connect button");
+			return;
+		}
 	}
 
 	@Override
@@ -74,10 +94,15 @@ public class MainActivity extends Activity implements SensorEventListener{
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
-			getAccelerometer(event);
+			if(testingSensors){
+				getAccelerometer(event);
+			}
+			
 		}
 		if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
-			getGyro(event);
+			if(testingSensors){
+				getGyro(event);
+			}
 		}
 		
 	}
@@ -90,6 +115,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		float z = values[2];
 		
 		long actualTime = System.currentTimeMillis();
+		
 		
 		String accelString ="x: "+Float.valueOf(x).toString()+"\n"+
 							"y: "+Float.valueOf(y).toString()+"\n"+
@@ -121,7 +147,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    super.onResume();
 	    // register this class as a listener for the orientation and
 	    // accelerometer sensors
-	    
+
 	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
 		        SensorManager.SENSOR_DELAY_FASTEST);
