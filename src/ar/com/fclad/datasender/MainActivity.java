@@ -1,7 +1,12 @@
 package ar.com.fclad.datasender;
 
-import java.util.List;
-
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -17,6 +22,16 @@ import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
+// Resources used to write this code:
+//
+// TCP CLIENT
+// http://examples.javacodegeeks.com/android/core/socket-core/android-socket-example/
+// Creative Commons Attribution-ShareAlike 3.0 Unported License
+//
+// SENSORS
+// https://developer.android.com/guide/topics/sensors/sensors_motion.html
+
+
 public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
@@ -25,6 +40,12 @@ public class MainActivity extends Activity implements SensorEventListener{
 	
 	private TextView accelSensorValues, gyroSensorValues;
 	
+	// Server parameters
+	private String server = "192.168.2.122";
+	private int port = 7777;
+	private Socket socket;
+
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -32,13 +53,12 @@ public class MainActivity extends Activity implements SensorEventListener{
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		// SENSORS
 		
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		
 		accelSensorValues = (TextView) findViewById(R.id.AccelSensorValue);
 		gyroSensorValues = (TextView) findViewById(R.id.GyroSensorValue);
-		
-		
 		
 		TextView sensorInfo = (TextView) findViewById(R.id.availableSensors);
 		
@@ -50,15 +70,63 @@ public class MainActivity extends Activity implements SensorEventListener{
 		sensorInfo.append(Float.valueOf(deviceGyro.getResolution()).toString());
 		sensorInfo.append("\n");
 		
-		
 		sensorInfo.append("ACCEL\n");
 		Sensor deviceAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 		sensorInfo.append(deviceAccel.getName()+"\n");
 		sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
 		sensorInfo.append("\n");
 		
+		// SOCKET
+		new Thread(new ClientThread()).start();
 		
 		
+		
+	}
+	
+	@Override
+	  protected void onResume() {
+	    super.onResume();
+	    // register this class as a listener for the orientation and
+	    // accelerometer sensors
+
+	    sensorManager.registerListener(this,
+		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
+		        SensorManager.SENSOR_DELAY_FASTEST);
+	    sensorManager.registerListener(this,
+		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+		        SensorManager.SENSOR_DELAY_FASTEST);
+
+	    // connect to a socket that must be running in the server
+	    
+	   
+	}
+
+	@Override
+	protected void onPause() {
+		// unregister listener
+		super.onPause();
+		sensorManager.unregisterListener(this);
+	    
+	}
+	
+	class ClientThread implements Runnable {
+
+		@Override
+		public void run() {
+			
+			try {
+				InetAddress serverAddr = InetAddress.getByName(server);
+
+				socket = new Socket(serverAddr, port);
+
+			} catch (UnknownHostException e1) {
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+
+		}
+
 	}
 	
 	public void onToggleClicked(View view){	
@@ -73,7 +141,20 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onClick(View view){
 		switch(view.getId()){
 		case R.id.connect:
-			Log.w("MainActivity","Clicked connect button");
+			try {
+				String str = "Ehlo, msg "+i++;
+				PrintWriter out = new PrintWriter(new BufferedWriter(
+						new OutputStreamWriter(socket.getOutputStream())),
+						true);
+				out.println(str);
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
 			return;
 		}
 	}
@@ -114,7 +195,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		float y = values[1];
 		float z = values[2];
 		
-		long actualTime = System.currentTimeMillis();
+		//long actualTime = System.currentTimeMillis();
 		
 		
 		String accelString ="x: "+Float.valueOf(x).toString()+"\n"+
@@ -132,7 +213,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		float y = values[1];
 		float z = values[2];
 		
-		long actualTime = System.currentTimeMillis();
+		//long actualTime = System.currentTimeMillis();
 		
 		String gyroString = "alpha: "+Float.valueOf(x).toString()+"\n"+
 							"beta: "+Float.valueOf(y).toString()+"\n"+
@@ -142,26 +223,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 	}
 
-	 @Override
-	  protected void onResume() {
-	    super.onResume();
-	    // register this class as a listener for the orientation and
-	    // accelerometer sensors
-
-	    sensorManager.registerListener(this,
-		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-		        SensorManager.SENSOR_DELAY_FASTEST);
-	    sensorManager.registerListener(this,
-		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-		        SensorManager.SENSOR_DELAY_FASTEST);
-
-	  }
-
-	  @Override
-	  protected void onPause() {
-	    // unregister listener
-	    super.onPause();
-	    sensorManager.unregisterListener(this);
-	  }
+	 
 
 }
