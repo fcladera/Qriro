@@ -85,7 +85,7 @@ int main(int argc, char **argv){
       else if(nb==0) 
 	break;
       buffer[nb]='\0';
-      printf("from %s %d : %d bytes: %s\n",
+      printf("from %s %d : %d bytes:\n%s\n",
 			inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 
       //---- send reply to client ----
