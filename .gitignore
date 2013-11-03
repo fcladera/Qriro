@@ -3,3 +3,7 @@
 *~
 *.bin
 
+# === Eclipse ===
+.cproject
+.project
+
