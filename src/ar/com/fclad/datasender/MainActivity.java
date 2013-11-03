@@ -44,6 +44,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private String server = "192.168.2.122";
 	private int port = 7777;
 	private Socket socket;
+	private boolean isSending;
 
 	
 	@Override
@@ -141,20 +142,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onClick(View view){
 		switch(view.getId()){
 		case R.id.connect:
-			try {
-				String str = "Ehlo, msg "+i++;
-				PrintWriter out = new PrintWriter(new BufferedWriter(
-						new OutputStreamWriter(socket.getOutputStream())),
-						true);
-				out.println(str);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
+			if(isSending)
+				isSending = false;
+			else
+				isSending = true;
+			Log.d("MainActivity", "Is sending "+isSending);
 			return;
 		}
 	}
@@ -176,21 +168,50 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
 			if(testingSensors){
-				getAccelerometer(event);
+				showAccelValues(event.values);
+			}
+			if(isSending){
+				try {
+					String str = "A:"+System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+					PrintWriter out = new PrintWriter(new BufferedWriter(
+							new OutputStreamWriter(socket.getOutputStream())),
+							true);
+					out.println(str);
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 			
 		}
 		if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
 			if(testingSensors){
-				getGyro(event);
+				showGyroValues(event.values);
 			}
+			if(isSending){
+				try {
+					String str = "G:"+System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+					PrintWriter out = new PrintWriter(new BufferedWriter(
+							new OutputStreamWriter(socket.getOutputStream())),
+							true);
+					out.println(str);
+				} catch (UnknownHostException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
 		}
 		
 	}
-	
-	private void getAccelerometer(SensorEvent event){
-		float[] values = event.values;
 		
+	private void showAccelValues(float[] values){
 		float x = values[0];
 		float y = values[1];
 		float z = values[2];
@@ -202,12 +223,9 @@ public class MainActivity extends Activity implements SensorEventListener{
 							"y: "+Float.valueOf(y).toString()+"\n"+
 							"z: "+Float.valueOf(z).toString();
 		accelSensorValues.setText(accelString);
-				
 	}
 	
-	private void getGyro(SensorEvent event){
-		
-		float[] values = event.values;
+	private void showGyroValues(float[] values){
 		
 		float x = values[0];
 		float y = values[1];
