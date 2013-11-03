@@ -20,6 +20,16 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#if 0
+#include <stdio.h>
+
+FILE *pipe = popen("gnuplot -persist","w");
+fprintf(pipe, "set data style lines\n");
+fprintf(pipe, "plot 'yourfile.dat' using 1:2\n");
+close(pipe);
+#endif
+// http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
+
 int main(int argc, char **argv){
   //---- check command line arguments ----
   if(argc!=2){ 
@@ -75,25 +85,31 @@ int main(int argc, char **argv){
 	  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
 
     for(;;){
-      //---- receive and display message from client ----
-      char buffer[0x100];
-      int nb=recv(dialogSocket,buffer,0x100,0);
-      if(nb==-1) {
-	perror("recvfrom"); 
-	exit(1);
-      }
-      else if(nb==0) 
-	break;
-      buffer[nb]='\0';
-      printf("from %s %d : %d bytes:\n%s\n",
-			inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+    	//---- receive and display message from client ----
+		struct timespec spec;
+		clock_gettime(CLOCK_REALTIME, &spec);
+		static double lastTime_us = 0;
+		volatile double currentTime_us = round(spec.tv_nsec / 1.0e3);
 
-      //---- send reply to client ----
-      nb=htons(nb);
-      if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
-	perror("send"); 
-	exit(1);
-      }
+		char buffer[0x100];
+		int nb=recv(dialogSocket,buffer,0x100,0);
+		if(nb==-1) {
+			perror("recvfrom");
+			exit(1);
+		}
+		else if(nb==0)
+			break;
+		buffer[nb]='\0';
+		printf("from %s %d : %d bytes delay %g ns:\n%s\n",
+			inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+		lastTime_us = currentTime_us;
+
+		//---- send reply to client ----
+		nb=htons(nb);
+		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
+			perror("send");
+			exit(1);
+		}
     }
 
     //---- close dialog socket ----
