@@ -44,6 +44,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private String server = "192.168.2.122";
 	private int port = 7777;
 	private Socket socket;
+	PrintWriter writer = null;
 	private boolean isSending;
 
 	
@@ -142,10 +143,22 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onClick(View view){
 		switch(view.getId()){
 		case R.id.connect:
-			if(isSending)
+			if(isSending){
 				isSending = false;
-			else
+				writer = null;
+			}
+			else{
+				
 				isSending = true;
+				try {
+					 writer = new PrintWriter(new BufferedWriter(
+							new OutputStreamWriter(socket.getOutputStream())),
+							true);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+				
 			Log.d("MainActivity", "Is sending "+isSending);
 			return;
 		}
@@ -171,19 +184,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 				showAccelValues(event.values);
 			}
 			if(isSending){
-				try {
-					String str = "A:"+System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
-					PrintWriter out = new PrintWriter(new BufferedWriter(
-							new OutputStreamWriter(socket.getOutputStream())),
-							true);
-					out.println(str);
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+
+				String str = "A:"+(int)System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+				
+				writer.println(str);
+				writer.flush();
 			}
 			
 		}
@@ -192,19 +197,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 				showGyroValues(event.values);
 			}
 			if(isSending){
-				try {
-					String str = "G:"+System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
-					PrintWriter out = new PrintWriter(new BufferedWriter(
-							new OutputStreamWriter(socket.getOutputStream())),
-							true);
-					out.println(str);
-				} catch (UnknownHostException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				
+				String str = "G:"+(int)System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+				writer.println(str);
+				writer.flush();
+				
 			}
 			
 		}
