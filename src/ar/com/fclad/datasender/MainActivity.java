@@ -121,6 +121,9 @@ public class MainActivity extends Activity implements SensorEventListener{
 		// unregister listener
 		super.onPause();
 		sensorManager.unregisterListener(this);
+		if(socket!=null){
+			disconnect();
+		}
 	    
 	}
 	
@@ -166,22 +169,25 @@ public class MainActivity extends Activity implements SensorEventListener{
 			}
 		}
 		else{
-			// disconnect socket
-			try {
-				socket.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			sendData.setEnabled(false);
-			connectRemote.setEnabled(true);
-			connectLocal.setEnabled(true);
-			isConnected = false;
-			
+			disconnect();
 		}
 		
 	}
 	
+	private void disconnect(){
+		// disconnect socket
+		try {
+			socket.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		sendData.setEnabled(false);
+		connectRemote.setEnabled(true);
+		connectLocal.setEnabled(true);
+		isConnected = false;
+		socket = null;
+	}
 
 	private class Connect extends AsyncTask<String, Void, String>{
 		/**
