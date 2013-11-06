@@ -28,12 +28,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name="ar.com.fclad.datasender.DrawActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/title_activity_draw"
             android:theme="@style/FullscreenTheme" >
         </activity>
+       
+        <service
+		  android:name="TCPclientService"
+		  android:icon="@drawable/ic_launcher"
+		  android:label="@string/service_name"
+  		>
+		</service> 
     </application>
+    
+    
 
 </manifest>

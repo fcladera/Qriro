@@ -106,6 +106,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 		Sensor deviceRotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 		sensorInfo.append(deviceRotationVector.getName()+"\n");
 		
+
+		// SOCKET
+		//new Thread(new ClientThread()).start();
+		Intent i = new Intent(this, TCPclientService.class);
+		
 		// UI
 		
 		sendData = (ToggleButton) findViewById(R.id.sendData);
