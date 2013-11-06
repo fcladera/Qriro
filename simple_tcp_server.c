@@ -32,6 +32,16 @@
 // http://www.x-io.co.uk/open-source-imu-and-ahrs-algorithms/ <= Source code available
 
 
+// TODO
+/*
+ * Improve reception - Using a cable less packets are lost?
+ * Improve feedgnuplot plotting (if possible). Multiple plots in one window
+ * Show data rate reception for each sensor. Reduce number of samples per second?
+ * Convert to physic units!
+ * Basic integration. Show drift error
+ * Get information from the magnetometer
+ * Read imu and ahrs algorithms
+ */
 int main(int argc, char **argv){
 
 
