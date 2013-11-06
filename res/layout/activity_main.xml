@@ -32,10 +32,16 @@
                    />
 
                <Button
-                   android:id="@+id/connect"
+                   android:id="@+id/connect_Remote"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:text="@string/connect_remote" />
+
+               <Button
+                   android:id="@+id/connect_Local"
                    android:layout_width="fill_parent"
                    android:layout_height="wrap_content"
-                   android:text="@string/connect" 
+                   android:text="@string/connect_local" 
                    android:onClick="onClick"/>
 
                <TextView

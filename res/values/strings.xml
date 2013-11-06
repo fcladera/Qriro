@@ -4,7 +4,8 @@
     <string name="app_name">DataSender</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
-    <string name="connect">Conectar</string>
+    <string name="connect_remote">Remote connection</string>
+    <string name="connect_local">Local connection</string>
     <string name="sensorTest_OFF">Test sensors</string>
     <string name="available_sensorTxt">Available Sensor List</string>
     <string name="accelSensor_valuesTxt">Live Acceleration Sensor Values</string>

@@ -142,7 +142,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	
 	public void onClick(View view){
 		switch(view.getId()){
-		case R.id.connect:
+		case R.id.connect_Local:
 			if(isSending){
 				isSending = false;
 				writer = null;
