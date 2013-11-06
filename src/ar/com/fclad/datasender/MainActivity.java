@@ -5,12 +5,15 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
@@ -19,7 +22,9 @@ import android.view.Menu;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 // Resources used to write this code:
@@ -35,17 +40,24 @@ import android.widget.ToggleButton;
 public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
-	private int i = 0;
 	private boolean testingSensors;
 	
 	private TextView accelSensorValues, gyroSensorValues;
 	
 	// Server parameters
-	private String server = "192.168.2.122";
+	private static final String localServer = "10.0.0.1";
+	private static final String remoteServer = "192.168.2.122";
 	private int port = 7777;
+	private static final int timeout = 1000;
 	private Socket socket;
 	PrintWriter writer = null;
-	private boolean isSending;
+	private boolean isSending = false;
+	private boolean isConnected = false;
+	
+	// UI elements
+	private ToggleButton sendData;
+	private Button connectRemote;
+	private Button connectLocal;
 
 	
 	@Override
@@ -78,10 +90,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 		sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
 		sensorInfo.append("\n");
 		
-		// SOCKET
-		new Thread(new ClientThread()).start();
+		// UI
 		
-		
+		sendData = (ToggleButton) findViewById(R.id.sendData);
+		connectLocal = (Button) findViewById(R.id.connect_Local);
+		connectRemote = (Button) findViewById(R.id.connect_Remote);
 		
 	}
 	
@@ -111,25 +124,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    
 	}
 	
-	class ClientThread implements Runnable {
-
-		@Override
-		public void run() {
-			
-			try {
-				InetAddress serverAddr = InetAddress.getByName(server);
-
-				socket = new Socket(serverAddr, port);
-
-			} catch (UnknownHostException e1) {
-				e1.printStackTrace();
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-
-		}
-
-	}
+	
 	
 	public void onToggleClicked(View view){	
 		switch (view.getId()){
@@ -137,19 +132,9 @@ public class MainActivity extends Activity implements SensorEventListener{
 			Log.w("MainActivity","Toggled testSensor button");
 			testingSensors = ((ToggleButton) view).isChecked();
 		return;
-		}
-	}
-	
-	public void onClick(View view){
-		switch(view.getId()){
-		case R.id.connect_Local:
+		case R.id.sendData:
+			isSending = ((ToggleButton) view).isChecked();
 			if(isSending){
-				isSending = false;
-				writer = null;
-			}
-			else{
-				
-				isSending = true;
 				try {
 					 writer = new PrintWriter(new BufferedWriter(
 							new OutputStreamWriter(socket.getOutputStream())),
@@ -158,10 +143,86 @@ public class MainActivity extends Activity implements SensorEventListener{
 					e.printStackTrace();
 				}
 			}
+			else{
+				writer = null;
+			}
 				
 			Log.d("MainActivity", "Is sending "+isSending);
 			return;
 		}
+	}
+	
+	public void onClick(View view){
+		if(!isConnected){
+			switch(view.getId()){
+			case R.id.connect_Remote:
+				Log.d("mainActivity", "Connection to remote asked");
+				new Connect().execute(remoteServer);
+				return;
+			case R.id.connect_Local:
+				Log.d("mainActivity", "Connection to local asked");
+				new Connect().execute(localServer);
+				return;
+			}
+		}
+		else{
+			// disconnect socket
+			try {
+				socket.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			sendData.setEnabled(false);
+			connectRemote.setEnabled(true);
+			connectLocal.setEnabled(true);
+			isConnected = false;
+			
+		}
+		
+	}
+	
+
+	private class Connect extends AsyncTask<String, Void, String>{
+		/**
+		 * Tries to connect in background to the socket.
+		 * If succed, UI is changed allowing to send data
+		 * If fails, show toast
+		 */
+
+		@Override
+		protected String doInBackground(String... params) {
+				//Toast.makeText(getApplicationContext(), "Connecting to server "+params[0].toString(), Toast.LENGTH_SHORT).show();
+				InetSocketAddress serverAddr = new InetSocketAddress(params[0], port);
+				socket = new Socket();
+				try {
+					socket.connect(serverAddr, timeout);
+					isConnected = true;
+				} catch (IOException e) {
+					//e.printStackTrace();
+					Log.w("Socket","Connection error");
+					isConnected = false;
+				}
+				return params[0];
+		}
+		
+		protected void onPostExecute(String result){
+			if(isConnected){
+				Toast.makeText(getApplicationContext(), "Successfully connected", Toast.LENGTH_SHORT).show();
+				if(result==localServer){
+					connectRemote.setEnabled(false);
+				}
+				else{
+					
+					connectLocal.setEnabled(false);
+				}
+				sendData.setEnabled(true);
+			}
+			else{
+				Toast.makeText(getApplicationContext(), "Error connecting to "+result, Toast.LENGTH_SHORT).show();
+			}
+		}
+		
 	}
 
 	@Override

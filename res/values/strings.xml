@@ -11,5 +11,7 @@
     <string name="accelSensor_valuesTxt">Live Acceleration Sensor Values</string>
     <string name="gyroSensor_valuesTxt">Live Gyro Sensor Values</string>
     <string name="sensorTest_ON">Testing...</string>
+    <string name="sendData_OFF">Send Data</string>
+    <string name="sendData_ON">Sending</string>
 
 </resources>

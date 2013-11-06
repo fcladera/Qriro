@@ -35,7 +35,8 @@
                    android:id="@+id/connect_Remote"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
-                   android:text="@string/connect_remote" />
+                   android:text="@string/connect_remote"
+                   android:onClick="onClick" />
 
                <Button
                    android:id="@+id/connect_Local"
@@ -43,6 +44,16 @@
                    android:layout_height="wrap_content"
                    android:text="@string/connect_local" 
                    android:onClick="onClick"/>
+
+               <ToggleButton
+                   android:id="@+id/sendData"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:enabled="false"
+                   android:textOff="@string/sendData_OFF"
+                   android:textOn="@string/sendData_ON" 
+                   android:onClick="onToggleClicked"
+                   />
 
                <TextView
                    android:id="@+id/AccelSensorValue"
