@@ -100,39 +100,19 @@ int main(int argc, char **argv){
 
   // Gnuplot pipe
   /* Create a FIFO we later use for communication gnuplot => our program. */
-	FILE  *gp_accel_x, *gp_accel_y, *gp_accel_z, *gp_accel_alpha, *gp_accel_beta, *gp_accel_gamma;
+	FILE  *gp_accel,  *gp_gyro;
 	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'Bytes/sec' --xlabel seconds > /dev/null";
-	if (NULL == (gp_accel_x = popen(command,"w"))) {
+	if (NULL == (gp_accel = popen(command,"w"))) {
 	  perror("gnuplot");
-	  pclose(gp_accel_x);
+	  pclose(gp_accel);
 	  return 1;
 	}
-	if (NULL == (gp_accel_y = popen(command,"w"))) {
+	if (NULL == (gp_gyro = popen(command,"w"))) {
 	  perror("gnuplot");
-	  pclose(gp_accel_y);
+	  pclose(gp_gyro);
 	  return 1;
 	}
-	if (NULL == (gp_accel_z = popen(command,"w"))) {
-	  perror("gnuplot");
-	  pclose(gp_accel_z);
-	  return 1;
-	}
-	if (NULL == (gp_accel_alpha = popen(command,"w"))) {
-		  perror("gnuplot");
-		  pclose(gp_accel_alpha);
-		  return 1;
-	}
-	if (NULL == (gp_accel_beta = popen(command,"w"))) {
-		  perror("gnuplot");
-		  pclose(gp_accel_beta);
-		  return 1;
-	}
-	if (NULL == (gp_accel_gamma = popen(command,"w"))) {
-		  perror("gnuplot");
-		  pclose(gp_accel_gamma);
-		  return 1;
-	}
-	puts("Connected to gnuplot.\n");
+	printf("Connected to gnuplot.\n");
 
   for(;;){
 
@@ -180,12 +160,9 @@ int main(int argc, char **argv){
 			loadfifoMooving(gyroValues[0],alpha_accel,SIZE_VALUES);
 			loadfifoMooving(gyroValues[1],beta_accel,SIZE_VALUES);
 			loadfifoMooving(gyroValues[2],gamma_accel,SIZE_VALUES);
-			fprintf(gp_accel_alpha, "\n%lf\n",gyroValues[0]);
-			fflush(gp_accel_alpha);
-			fprintf(gp_accel_beta, "\n%lf\n",gyroValues[1]);
-			fflush(gp_accel_beta);
-			fprintf(gp_accel_gamma, "\n%lf\n",gyroValues[2]);
-			fflush(gp_accel_gamma);
+			fprintf(gp_gyro, "%lf\t%lf\t%lf\n",gyroValues[0],gyroValues[1],gyroValues[2]);
+			fflush(gp_gyro);
+
 
 
 		}
@@ -198,12 +175,8 @@ int main(int argc, char **argv){
 			loadfifoMooving(accelValues[0],alpha_accel,SIZE_VALUES);
 			loadfifoMooving(accelValues[1],beta_accel,SIZE_VALUES);
 			loadfifoMooving(accelValues[2],gamma_accel,SIZE_VALUES);
-			fprintf(gp_accel_x, "\n%lf\n",accelValues[0]);
-			fflush(gp_accel_x);
-			fprintf(gp_accel_y, "\n%lf\n",accelValues[1]);
-			fflush(gp_accel_y);
-			fprintf(gp_accel_z, "\n%lf\n",accelValues[2]);
-			fflush(gp_accel_z);
+			fprintf(gp_accel, "%lf\t%lf\t%lf\n",accelValues[0],accelValues[1],accelValues[2]);
+			fflush(gp_accel);
 		}
 		else{
 			printf("Wrong frame received!!\n");
@@ -229,12 +202,9 @@ int main(int argc, char **argv){
   return 0;
 
   //----close gnuplot-----
-  pclose(gp_accel_x);
-  pclose(gp_accel_y);
-  pclose(gp_accel_z);
-  pclose(gp_accel_alpha);
-  pclose(gp_accel_beta);
-  pclose(gp_accel_gamma);
+  pclose(gp_accel);
+  pclose(gp_gyro);
+
 
 }
 
