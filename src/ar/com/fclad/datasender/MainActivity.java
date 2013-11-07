@@ -122,7 +122,14 @@ public class MainActivity extends Activity implements SensorEventListener{
 		super.onPause();
 		sensorManager.unregisterListener(this);
 		if(socket!=null){
+			if(isSending){
+				destroyWriterStream();
+				isSending = false;
+				sendData.setChecked(false);
+				
+			}
 			disconnect();
+			
 		}
 	    
 	}
@@ -138,16 +145,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		case R.id.sendData:
 			isSending = ((ToggleButton) view).isChecked();
 			if(isSending){
-				try {
-					 writer = new PrintWriter(new BufferedWriter(
-							new OutputStreamWriter(socket.getOutputStream())),
-							true);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				createWriterStream();
 			}
 			else{
-				writer = null;
+				destroyWriterStream();
 			}
 				
 			Log.d("MainActivity", "Is sending "+isSending);
@@ -189,6 +190,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		socket = null;
 	}
 
+	
 	private class Connect extends AsyncTask<String, Void, String>{
 		/**
 		 * Tries to connect in background to the socket.
@@ -230,6 +232,22 @@ public class MainActivity extends Activity implements SensorEventListener{
 		}
 		
 	}
+	
+	private void createWriterStream(){
+		try {
+			 writer = new PrintWriter(new BufferedWriter(
+					new OutputStreamWriter(socket.getOutputStream())),
+					true);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void destroyWriterStream(){
+		writer = null;
+	}
+	
+	
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
