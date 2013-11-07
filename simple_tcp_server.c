@@ -50,8 +50,7 @@ int main(int argc, char **argv){
 	double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
 	double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
 
-	// Gyro vectors (rotational acceleration, velocity, position)
-	double alpha_accel[SIZE_VALUES], beta_accel[SIZE_VALUES], gamma_accel[SIZE_VALUES];
+	// Gyro vectors (rotational velocity, position)
 	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
 	double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
 
@@ -157,9 +156,9 @@ int main(int argc, char **argv){
 			unsigned int timeValue;
 			sscanf(buffer,"%*c:%u:%lf:%lf:%lf;",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
 
-			loadfifoMooving(gyroValues[0],alpha_accel,SIZE_VALUES);
-			loadfifoMooving(gyroValues[1],beta_accel,SIZE_VALUES);
-			loadfifoMooving(gyroValues[2],gamma_accel,SIZE_VALUES);
+			loadfifoMooving(gyroValues[0],alpha_vel,SIZE_VALUES);
+			loadfifoMooving(gyroValues[1],beta_vel,SIZE_VALUES);
+			loadfifoMooving(gyroValues[2],gamma_vel,SIZE_VALUES);
 			fprintf(gp_gyro, "%lf\t%lf\t%lf\n",gyroValues[0],gyroValues[1],gyroValues[2]);
 			fflush(gp_gyro);
 
