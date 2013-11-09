@@ -98,7 +98,7 @@ int main(int argc, char **argv){
 
 	// Gyro vectors (rotational velocity, position)
 	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
-	//double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
+	double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
 
 
 	//---- check command line arguments ----
@@ -145,111 +145,131 @@ int main(int argc, char **argv){
 
   // Gnuplot pipe
   /* Create a FIFO we later use for communication gnuplot => our program. */
-	FILE  *gp_accel,  *gp_gyro;
-	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'Bytes/sec' --xlabel seconds > /dev/null";
+	FILE  *gp_accel,  *gp_gyro, *gp_latency;
+	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'value' --xlabel sample > /dev/null";
 	if (NULL == (gp_accel = popen(command,"w"))) {
 	  perror("gnuplot");
 	  pclose(gp_accel);
 	  return 1;
 	}
 	if (NULL == (gp_gyro = popen(command,"w"))) {
-	  perror("gnuplot");
-	  pclose(gp_gyro);
-	  return 1;
+		  perror("gnuplot");
+		  pclose(gp_gyro);
+		  return 1;
 	}
+	if (NULL == (gp_latency = popen(command,"w"))) {
+		  perror("gnuplot");
+		  pclose(gp_latency);
+		  return 1;
+	}
+
+
 	printf("Connected to gnuplot.\n");
 
-  for(;;){
 
-    //---- accept new connection ----
-    struct sockaddr_in fromAddr;
-    socklen_t len=sizeof(fromAddr);
-    int dialogSocket=accept(listenSocket,(struct sockaddr *)&fromAddr,&len);
-    if(dialogSocket==-1){ 
-      perror("accept"); 
-      exit(1); 
-    }
-    printf("new connection from %s:%d\n",
-	  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
+	for(;;){
 
-    for(;;){
-    	//---- receive and display message from client ----
-		struct timespec spec;
-		clock_gettime(CLOCK_REALTIME, &spec);
-		static double lastTime_us = 0;
-		volatile double currentTime_us = round(spec.tv_nsec / 1.0e3);
-
-		char buffer[0x100];
-		int nb=recv(dialogSocket,buffer,0x100,0);
-		if(nb==-1) {
-			perror("recvfrom");
-			exit(1);
+		//---- accept new connection ----
+		struct sockaddr_in fromAddr;
+		socklen_t len=sizeof(fromAddr);
+		int dialogSocket=accept(listenSocket,(struct sockaddr *)&fromAddr,&len);
+		if(dialogSocket==-1){
+		  perror("accept");
+		  exit(1);
 		}
-		else if(nb==0){
-			break;
+		printf("new connection from %s:%d\n",
+		  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
+
+		for(;;){
+			//---- receive and display message from client ----
+			struct timespec spec;
+			clock_gettime(CLOCK_REALTIME, &spec);
+			static double lastTime_us = 0;
+			volatile double currentTime_us = round(spec.tv_nsec / 1.0e3);
+
+			char buffer[0x100];
+			int nb=recv(dialogSocket,buffer,0x100,0);
+			if(nb==-1) {
+				perror("recvfrom");
+				exit(1);
+			}
+			else if(nb==0){
+				break;
+			}
+			buffer[nb]='\0';
+			//printf("from %s %d : %d bytes delay %g ns:\n%s\n",
+			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+			lastTime_us = currentTime_us;
+
+			char * sliding_pointer = buffer;
+			while (*sliding_pointer!='\0') {
+				char sensorType;
+				double values[3];
+				double timeValue;
+
+				if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
+					printf("Wrong frame received!!\n");
+					printf("ERRONEOUS FRAME: from %s %d : %d bytes delay %g ns:\n%s\n",
+							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+					exit(EXIT_FAILURE);
+				}
+
+				if( sscanf(sliding_pointer,"%c:%lf:%lf:%lf:%lf;\n",&sensorType,&timeValue,values,values+1,values+2) != 5){
+					printf("Invalid line format?: from %s %d : %d bytes delay %g ns:\n%s\n",
+							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+					exit(EXIT_FAILURE);
+				}
+
+				if(sensorType=='G'){
+					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+
+					double new_alpha_pos = alpha_pos[0]+alpha_vel[0]*timeValue;
+					double new_beta_pos = beta_pos[0]+beta_vel[0]*timeValue;
+					double new_gamma_pos = gamma_pos[0]+gamma_vel[0]*timeValue;
+
+					loadfifoMooving(new_alpha_pos,alpha_pos,SIZE_VALUES);
+					loadfifoMooving(new_beta_pos,beta_pos,SIZE_VALUES);
+					loadfifoMooving(new_gamma_pos,gamma_pos,SIZE_VALUES);
+
+					//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+					fprintf(gp_gyro, "%lf\t%lf\t%lf\n",new_alpha_pos,new_beta_pos,new_gamma_pos);
+					fflush(gp_gyro);
+					fprintf(gp_latency,"%lf\n",timeValue);
+					fflush(gp_latency);
+				}
+				else if(sensorType=='A'){
+					loadfifoMooving(values[0],x_accel,SIZE_VALUES);
+					loadfifoMooving(values[1],y_accel,SIZE_VALUES);
+					loadfifoMooving(values[2],z_accel,SIZE_VALUES);
+					fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+					fflush(gp_accel);
+				}
+				else{
+					printf("Wrong sensor type: %c\n",sensorType);
+				}
+
+				// jump to next line
+				while(*(++sliding_pointer)!='\n');
+				sliding_pointer++;
+
+			}
+
+
+
+			//---- send reply to client ----
+	//		nb=htons(nb);
+	//		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
+	//			perror("send");
+	//			exit(1);
+	//		}
+
 		}
-		buffer[nb]='\0';
-		printf("from %s %d : %d bytes delay %g ns:\n%s\n",
-			inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
-		lastTime_us = currentTime_us;
 
-		char * sliding_pointer = buffer;
-		while (*sliding_pointer!='\0') {
-			char sensorType;
-			double values[3];
-			double timeValue;
-
-			if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
-				printf("Wrong frame received!!\n");
-				printf("ERRONEOUS FRAME: from %s %d : %d bytes delay %g ns:\n%s\n",
-						inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
-				exit(EXIT_FAILURE);
-			}
-
-			if( sscanf(sliding_pointer,"%c:%lf:%lf:%lf:%lf;\n",&sensorType,&timeValue,values,values+1,values+2) != 5){
-				printf("Invalid line format?: from %s %d : %d bytes delay %g ns:\n%s\n",
-						inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
-				exit(EXIT_FAILURE);
-			}
-
-			if(sensorType=='G'){
-				loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-				loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-				loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
-				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
-				fflush(gp_gyro);
-			}
-			else if(sensorType=='A'){
-				loadfifoMooving(values[0],x_accel,SIZE_VALUES);
-				loadfifoMooving(values[1],y_accel,SIZE_VALUES);
-				loadfifoMooving(values[2],z_accel,SIZE_VALUES);
-				fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
-				fflush(gp_accel);
-			}
-			else{
-				printf("Wrong sensor type: %c\n",sensorType);
-			}
-
-			// jump to next line
-			while(*(++sliding_pointer)!='\n');
-			sliding_pointer++;
-
-		}
-
-
-
-		//---- send reply to client ----
-//		nb=htons(nb);
-//		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
-//			perror("send");
-//			exit(1);
-//		}
-
-    }
-
-    //---- close dialog socket ----
-    printf("client disconnected\n");
-    close(dialogSocket);
+		//---- close dialog socket ----
+		printf("client disconnected\n");
+		close(dialogSocket);
   }
 
   //---- close listen socket ----
@@ -258,6 +278,7 @@ int main(int argc, char **argv){
   //----close gnuplot-----
   pclose(gp_accel);
   pclose(gp_gyro);
+  pclose(gp_latency);
 
   return 0;
 
