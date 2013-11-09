@@ -24,7 +24,8 @@
 
 #define SIZE_VALUES 100
 
-#define LOG_TO_FILE 1
+#define LOG_TO_FILE 0
+#define MEASURE_EXECUTION_TIME 1
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -191,12 +192,10 @@ int main(int argc, char **argv){
 		printf("new connection from %s:%d\n",
 		  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
 
+		struct timespec spec;
+		double startTime, endTime;
 		for(;;){
-			//---- receive and display message from client ----
-			struct timespec spec;
-			clock_gettime(CLOCK_REALTIME, &spec);
-			static double lastTime_us = 0;
-			volatile double currentTime_us = round(spec.tv_nsec / 1.0e3);
+			// Get message from the client
 
 			char buffer[0x100];
 			int nb=recv(dialogSocket,buffer,0x100,0);
@@ -207,6 +206,11 @@ int main(int argc, char **argv){
 			else if(nb==0){
 				break;
 			}
+
+			if(MEASURE_EXECUTION_TIME){
+				clock_gettime(CLOCK_REALTIME, &spec);
+				startTime = round(spec.tv_nsec / 1.0e3);
+			}
 			if(LOG_TO_FILE){
 				fprintf(logfile,"%s",buffer);
 			}
@@ -215,7 +219,6 @@ int main(int argc, char **argv){
 
 			//printf("from %s %d : %d bytes delay %g ns:\n%s\n",
 			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
-			lastTime_us = currentTime_us;
 
 			char * sliding_pointer = buffer;
 			while (*sliding_pointer!='\0') {
@@ -225,14 +228,14 @@ int main(int argc, char **argv){
 
 				if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
 					printf("Wrong frame received!!\n");
-					printf("ERRONEOUS FRAME: from %s %d : %d bytes delay %g ns:\n%s\n",
-							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+					printf("ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
+							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
 				if( sscanf(sliding_pointer,"%c:%lf:%lf:%lf:%lf;\n",&sensorType,&timeValue,values,values+1,values+2) != 5){
-					printf("Invalid line format?: from %s %d : %d bytes delay %g ns:\n%s\n",
-							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+					printf("Invalid line format?: from %s %d : %d bytes:\n%s\n",
+							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
@@ -272,7 +275,11 @@ int main(int argc, char **argv){
 
 			}
 
-
+			if(MEASURE_EXECUTION_TIME){
+				clock_gettime(CLOCK_REALTIME, &spec);
+				endTime = round(spec.tv_nsec / 1.0e3);
+				printf("Execution time (ns): %g\n",endTime-startTime);
+			}
 
 			//---- send reply to client ----
 	//		nb=htons(nb);
