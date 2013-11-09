@@ -45,14 +45,60 @@
 int main(int argc, char **argv){
 
 
+#if 0
+	// This is an example how to fetch multiple lines from a char[]
+	FILE *fd = NULL;
+	fd = fopen("example.tst","r");
+	if (fd==NULL) perror(__FILE__);
+	char linea[MAX_REC_LEN];
+	printf("File opened\n");
+	/*
+	while (!feof(fd)) {
+	  double gyroValues[3];
+	  double timeValue;
+	  int scanresult = fscanf(fd,"%*c:%lf:%lf:%lf:%lf;\n",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
+	  printf("%d\n",scanresult);
+	  if( scanresult != 4){
+		  printf("EOF?\n");
+		  break;
+	  }
+
+	  //printf("Line %lf:%lf:%lf:%lf\n", timeValue,gyroValues[0],gyroValues[1],gyroValues[2]);
+	}
+	*/
+	fread(linea,1,MAX_REC_LEN,fd);
+	fclose(fd);
+	//printf("%s",linea);
+
+	char * glissant = linea;
+	while (*glissant!='\0') {
+		  double gyroValues[3];
+		  double timeValue;
+		  int scanresult = sscanf(glissant,"%*c:%lf:%lf:%lf:%lf;\n",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
+		  printf("%d\n",scanresult);
+		  if( scanresult != 4){
+			  printf("EOF?\n");
+			  break;
+		  }
+
+		  printf("Line %lf:%lf:%lf:%lf\n", timeValue,gyroValues[0],gyroValues[1],gyroValues[2]);
+
+		  // jump to next line
+		  while(*(++glissant)!='\n');
+		  glissant++;
+
+	}
+	return 0;
+	#endif
+
 	// Accelerometer vectors (acceleration, velocity, position)
 	double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
-	double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
-	double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
+	//double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
+	//double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
 
 	// Gyro vectors (rotational velocity, position)
 	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
-	double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
+	//double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
 
 
 	//---- check command line arguments ----
@@ -143,43 +189,53 @@ int main(int argc, char **argv){
 			break;
 		}
 		buffer[nb]='\0';
-		//printf("from %s %d : %d bytes delay %g ns:\n%s\n",
-		//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+		printf("from %s %d : %d bytes delay %g ns:\n%s\n",
+			inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
 		lastTime_us = currentTime_us;
 
-		// TODO
-		// sscanf only scans one line. It should be analyzed what happens if multiple lines arrive in one packet
+		char * sliding_pointer = buffer;
+		while (*sliding_pointer!='\0') {
+			char sensorType;
+			double values[3];
+			double timeValue;
 
-		if(buffer[0]=='G'){
-			// gyro frame received
-			double gyroValues[3];
-			unsigned int timeValue;
-			sscanf(buffer,"%*c:%u:%lf:%lf:%lf;",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
+			if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
+				printf("Wrong frame received!!\n");
+				printf("ERRONEOUS FRAME: from %s %d : %d bytes delay %g ns:\n%s\n",
+						inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+				exit(EXIT_FAILURE);
+			}
 
-			loadfifoMooving(gyroValues[0],alpha_vel,SIZE_VALUES);
-			loadfifoMooving(gyroValues[1],beta_vel,SIZE_VALUES);
-			loadfifoMooving(gyroValues[2],gamma_vel,SIZE_VALUES);
-			fprintf(gp_gyro, "%lf\t%lf\t%lf\n",gyroValues[0],gyroValues[1],gyroValues[2]);
-			fflush(gp_gyro);
+			if( sscanf(sliding_pointer,"%c:%lf:%lf:%lf:%lf;\n",&sensorType,&timeValue,values,values+1,values+2) != 5){
+				printf("Invalid line format?: from %s %d : %d bytes delay %g ns:\n%s\n",
+						inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+				exit(EXIT_FAILURE);
+			}
 
+			if(sensorType=='G'){
+				loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+				loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+				loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+				fflush(gp_gyro);
+			}
+			else if(sensorType=='A'){
+				loadfifoMooving(values[0],x_accel,SIZE_VALUES);
+				loadfifoMooving(values[1],y_accel,SIZE_VALUES);
+				loadfifoMooving(values[2],z_accel,SIZE_VALUES);
+				fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+				fflush(gp_accel);
+			}
+			else{
+				printf("Wrong sensor type: %c\n",sensorType);
+			}
 
+			// jump to next line
+			while(*(++sliding_pointer)!='\n');
+			sliding_pointer++;
 
 		}
-		else if(buffer[0]=='A'){
-			// accelerometer frame received
-			double accelValues[3];
-			unsigned int timeValue;
-			sscanf(buffer,"%*c:%u:%lf:%lf:%lf;",&timeValue,accelValues,accelValues+1,accelValues+2);
 
-			loadfifoMooving(accelValues[0],alpha_accel,SIZE_VALUES);
-			loadfifoMooving(accelValues[1],beta_accel,SIZE_VALUES);
-			loadfifoMooving(accelValues[2],gamma_accel,SIZE_VALUES);
-			fprintf(gp_accel, "%lf\t%lf\t%lf\n",accelValues[0],accelValues[1],accelValues[2]);
-			fflush(gp_accel);
-		}
-		else{
-			printf("Wrong frame received!!\n");
-		}
 
 
 		//---- send reply to client ----
@@ -198,12 +254,12 @@ int main(int argc, char **argv){
 
   //---- close listen socket ----
   close(listenSocket);
-  return 0;
 
   //----close gnuplot-----
   pclose(gp_accel);
   pclose(gp_gyro);
 
+  return 0;
 
 }
 
