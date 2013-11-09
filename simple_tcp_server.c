@@ -23,6 +23,8 @@
 #include "fifo.h"
 
 #define SIZE_VALUES 100
+
+#define LOG_TO_FILE 1
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -167,6 +169,15 @@ int main(int argc, char **argv){
 	printf("Connected to gnuplot.\n");
 
 
+	// Log file
+	FILE *logfile = NULL;
+	if(LOG_TO_FILE){
+		printf("WARNING: Log enabled!\nThe values will be stored in points.dat\n");
+		logfile = fopen("points.dat","w");
+		if (logfile==NULL) perror(__FILE__);
+	}
+
+
 	for(;;){
 
 		//---- accept new connection ----
@@ -196,7 +207,12 @@ int main(int argc, char **argv){
 			else if(nb==0){
 				break;
 			}
+			if(LOG_TO_FILE){
+				fprintf(logfile,"%s",buffer);
+			}
 			buffer[nb]='\0';
+
+
 			//printf("from %s %d : %d bytes delay %g ns:\n%s\n",
 			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
 			lastTime_us = currentTime_us;
@@ -279,7 +295,9 @@ int main(int argc, char **argv){
   pclose(gp_accel);
   pclose(gp_gyro);
   pclose(gp_latency);
-
+  if(LOG_TO_FILE){
+	  fclose(logfile);
+  }
   return 0;
 
 }
