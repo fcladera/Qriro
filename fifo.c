@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 void loadfifoPointer(double value, double *fifo, unsigned int lenlista){
 
@@ -39,4 +40,31 @@ void printfifo(double *fifo, unsigned int lenlista){
 	for(i=0;i<lenlista;i++){
 		printf("[%d]: %g\n",i,fifo[i]);
 	}
+}
+
+double sumfifo(double *fifo, unsigned int lenlista){
+	unsigned int i,j;
+	double result;
+
+	if(lenlista%2!=0){
+		printf("Error, the fifo size should be 2^n");
+		exit(EXIT_FAILURE);
+	}
+
+	double * tempfifo = malloc(sizeof(double)*lenlista);
+
+	//copy fifo into tempfifo
+	for(i=0;i<lenlista;i++){
+		tempfifo[i] = fifo[i];
+	}
+
+	//add elements of tempfifo
+	for(j=lenlista/2;j>=1;j=j/2){
+		for(i=0;i<j;i++){
+			tempfifo[i] = tempfifo[2*i]+tempfifo[2*i+1];
+		}
+	}
+	result = tempfifo[0];
+	free(tempfifo);
+	return result;
 }

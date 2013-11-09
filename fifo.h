@@ -17,5 +17,7 @@ void clearfifo(double *, unsigned int);
 
 void printfifo(double *, unsigned int );
 
+double sumfifo(double *, unsigned int );
+
 
 #endif /* FIFO_H_ */
