@@ -48,7 +48,6 @@
  */
 int main(int argc, char **argv){
 
-
 #if 0
 	// This is an example how to fetch multiple lines from a char[]
 	FILE *fd = NULL;
@@ -174,7 +173,7 @@ int main(int argc, char **argv){
 	// Log file
 	FILE *logfile = NULL;
 	if(LOG_TO_FILE){
-		printf("WARNING: Log enabled!\nThe values will be stored in points.dat\n");
+		fprintf(stderr,"WARNING: Log enabled!\nThe values will be stored in points.dat\n");
 		logfile = fopen("points.dat","w");
 		if (logfile==NULL) perror(__FILE__);
 	}
@@ -195,6 +194,11 @@ int main(int argc, char **argv){
 
 		struct timespec spec;
 		double startTime, endTime;
+
+		double alpha_vel_st=NAN,
+				beta_vel_st=NAN,
+				gamma_vel_st=NAN;
+		int counter_gyro=0;
 		for(;;){
 			// Get message from the client
 
@@ -226,45 +230,69 @@ int main(int argc, char **argv){
 				char sensorType;
 				double values[3];
 				double timeValue;
+				long frameID;
 
 				if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
-					printf("Wrong frame received!!\n");
-					printf("ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
+					fprintf(stderr,"ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
 							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
-				if( sscanf(sliding_pointer,"%c:%lf:%lf:%lf:%lf;\n",&sensorType,&timeValue,values,values+1,values+2) != 5){
-					printf("Invalid line format?: from %s %d : %d bytes:\n%s\n",
+				if( sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",&sensorType,&frameID,&timeValue,values,values+1,values+2) != 6){
+					fprintf(stderr,"Invalid line format?: from %s %d : %d bytes:\n%s\n",
+							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+					exit(EXIT_FAILURE);
+				}
+
+				if((values[0]==NAN)||(values[1]==NAN)||(values[2]==NAN)){
+					fprintf(stderr,"NAN numbers found: from %s %d : %d bytes:\n%s\n",
 							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
 				if(sensorType=='G'){
-					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
 
-					double new_alpha_pos = alpha_pos[0]+alpha_vel[0]*timeValue;
-					double new_beta_pos = beta_pos[0]+beta_vel[0]*timeValue;
-					double new_gamma_pos = gamma_pos[0]+gamma_vel[0]*timeValue;
+					//printf("%d\n",counter_gyro);
+					if(counter_gyro<SIZE_VALUES){
+						loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+						loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+						loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+						counter_gyro++;
+					}
+					else if(counter_gyro==SIZE_VALUES){
+						alpha_vel_st = sumfifo(alpha_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+						beta_vel_st = sumfifo(beta_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+						gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+						counter_gyro++;
+						printf("Calibrating Gyro...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
+						//printfifo(alpha_vel,SIZE_VALUES);
+					}
+					else{
+						loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
+						loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
+						loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
+						double new_alpha_pos = alpha_pos[0]+alpha_vel[0]*timeValue;
+						double new_beta_pos = beta_pos[0]+beta_vel[0]*timeValue;
+						double new_gamma_pos = gamma_pos[0]+gamma_vel[0]*timeValue;
+						loadfifoMooving(new_alpha_pos,alpha_pos,SIZE_VALUES);
+						loadfifoMooving(new_beta_pos,beta_pos,SIZE_VALUES);
+						loadfifoMooving(new_gamma_pos,gamma_pos,SIZE_VALUES);
+						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+						fprintf(gp_gyro, "%lf\t%lf\t%lf\n",new_alpha_pos,new_beta_pos,new_gamma_pos);
+						fflush(gp_gyro);
+						fprintf(gp_latency,"%lf\n",timeValue);
+						fflush(gp_latency);
+					}
 
-					loadfifoMooving(new_alpha_pos,alpha_pos,SIZE_VALUES);
-					loadfifoMooving(new_beta_pos,beta_pos,SIZE_VALUES);
-					loadfifoMooving(new_gamma_pos,gamma_pos,SIZE_VALUES);
-
-					//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
-					fprintf(gp_gyro, "%lf\t%lf\t%lf\n",new_alpha_pos,new_beta_pos,new_gamma_pos);
-					fflush(gp_gyro);
-					fprintf(gp_latency,"%lf\n",timeValue);
-					fflush(gp_latency);
 				}
 				else if(sensorType=='A'){
+
 					loadfifoMooving(values[0],x_accel,SIZE_VALUES);
 					loadfifoMooving(values[1],y_accel,SIZE_VALUES);
 					loadfifoMooving(values[2],z_accel,SIZE_VALUES);
 					fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
 					fflush(gp_accel);
+
 				}
 				else{
 					printf("Wrong sensor type: %c\n",sensorType);
