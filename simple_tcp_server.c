@@ -22,10 +22,11 @@
 
 #include "fifo.h"
 
-#define SIZE_VALUES 100
+#define SIZE_VALUES 256
+#define SIZE_TCP_BUFFER 0x1000
 
 #define LOG_TO_FILE 0
-#define MEASURE_EXECUTION_TIME 1
+#define MEASURE_EXECUTION_TIME 0
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -197,8 +198,8 @@ int main(int argc, char **argv){
 		for(;;){
 			// Get message from the client
 
-			char buffer[0x100];
-			int nb=recv(dialogSocket,buffer,0x100,0);
+			char buffer[SIZE_TCP_BUFFER];
+			int nb=recv(dialogSocket,buffer,SIZE_TCP_BUFFER,0);
 			if(nb==-1) {
 				perror("recvfrom");
 				exit(1);
@@ -217,8 +218,8 @@ int main(int argc, char **argv){
 			buffer[nb]='\0';
 
 
-			//printf("from %s %d : %d bytes delay %g ns:\n%s\n",
-			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,currentTime_us-lastTime_us,buffer);
+			//printf("from %s %d : %d bytes:\n%s\n",
+			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 
 			char * sliding_pointer = buffer;
 			while (*sliding_pointer!='\0') {
