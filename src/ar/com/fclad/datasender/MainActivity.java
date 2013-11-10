@@ -176,6 +176,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		}
 		else{
 			disconnect();
+			if(isSending){
+				sendData.setChecked(false);
+				isSending=false;
+			}
 		}
 		
 	}
