@@ -21,7 +21,7 @@ void loadfifoPointer(double value, double *fifo, unsigned int lenlista){
 
 void loadfifoMooving(double value, double * fifo, unsigned int lenlista){
 	unsigned int i;
-	for(i=lenlista;i>0;i--){
+	for(i=lenlista-1;i>0;i--){
 		fifo[i] = fifo[i-1];
 	}
 	fifo[0] = value;
