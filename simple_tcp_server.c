@@ -21,12 +21,15 @@
 #include <arpa/inet.h>
 
 #include "fifo.h"
+#include "simple_tcp_server.h"
 
 #define SIZE_VALUES 256
 #define SIZE_TCP_BUFFER 0x1000
 
 #define LOG_TO_FILE 0
 #define MEASURE_EXECUTION_TIME 0
+
+
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -260,6 +263,7 @@ int main(int argc, char **argv){
 
 				if(sensorType=='G'){
 
+
 					//printf("%d\n",counter_gyro);
 					if(counter_gyro<SIZE_VALUES){
 						loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
@@ -286,10 +290,10 @@ int main(int argc, char **argv){
 						loadfifoMooving(new_beta_pos,beta_pos,SIZE_VALUES);
 						loadfifoMooving(new_gamma_pos,gamma_pos,SIZE_VALUES);
 						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
-						fprintf(gp_gyro, "%lf\t%lf\t%lf\n",new_alpha_pos,new_beta_pos,new_gamma_pos);
+						fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
 						fflush(gp_gyro);
-						fprintf(gp_latency,"%lf\n",timeValue);
-						fflush(gp_latency);
+						//fprintf(gp_latency,"%lf\n",timeValue);
+						//fflush(gp_latency);
 					}
 
 				}
@@ -343,6 +347,9 @@ int main(int argc, char **argv){
 	  fclose(logfile);
   }
   return 0;
-
 }
 
+
+double toDegrees(double radians){
+	return (radians*180./M_PI);
+}
