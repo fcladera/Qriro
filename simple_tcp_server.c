@@ -180,6 +180,13 @@ int main(int argc, char **argv){
 
 
 	for(;;){
+		//Each time the client connects, the buffers are clean
+		clearfifo(alpha_vel,SIZE_VALUES);
+		clearfifo(beta_vel,SIZE_VALUES);
+		clearfifo(gamma_vel,SIZE_VALUES);
+		clearfifo(alpha_pos,SIZE_VALUES);
+		clearfifo(beta_pos,SIZE_VALUES);
+		clearfifo(gamma_pos,SIZE_VALUES);
 
 		//---- accept new connection ----
 		struct sockaddr_in fromAddr;
@@ -200,8 +207,9 @@ int main(int argc, char **argv){
 				gamma_vel_st=NAN;
 		int counter_gyro=0;
 		for(;;){
-			// Get message from the client
 
+
+			// Get message from the client
 			char buffer[SIZE_TCP_BUFFER];
 			int nb=recv(dialogSocket,buffer,SIZE_TCP_BUFFER,0);
 			if(nb==-1) {
