@@ -41,6 +41,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
 	private boolean testingSensors;
+	private float timestampGyro;
+	private float timestampAccel;
+	private static final float NS2S = 1.0f / 1000000000.0f;
+	private long code;
+
 	
 	private TextView accelSensorValues, gyroSensorValues;
 	
@@ -106,10 +111,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 
 	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-		        SensorManager.SENSOR_DELAY_FASTEST);
+		        SensorManager.SENSOR_DELAY_GAME);
 	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-		        SensorManager.SENSOR_DELAY_FASTEST);
+		        SensorManager.SENSOR_DELAY_GAME);
 
 	    // connect to a socket that must be running in the server
 	    
@@ -180,8 +185,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 		try {
 			socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			Log.e("MainActivity", "Error on disconnect");
+			//e.printStackTrace();
 		}
 		sendData.setEnabled(false);
 		connectRemote.setEnabled(true);
@@ -208,7 +213,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 					isConnected = true;
 				} catch (IOException e) {
 					//e.printStackTrace();
-					Log.w("Socket","Connection error");
+					Log.e("Socket","Connection error");
 					isConnected = false;
 				}
 				return params[0];
@@ -240,6 +245,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 					true);
 		} catch (IOException e) {
 			e.printStackTrace();
+			Log.e("MainActivity", "Error on createWriterStream");
 		}
 	}
 	
@@ -262,38 +268,53 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 	}
 	
+	
+	// TODO: arreglar bug raro con el timestamp y el dt que es siempre nulo! 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
+			float dT = 0;
+			if(timestampAccel!=0){
+				dT =  (event.timestamp-timestampAccel)*NS2S;
+			}
+			timestampAccel = event.timestamp;
+			
 			if(testingSensors){
-				showAccelValues(event.values);
+				showAccelValues(event.values,dT);
 			}
 			if(isSending){
-
-				String str = "A:"+(int)System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+	
+					String str = "A:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+					code++;
+					writer.println(str);
+					writer.flush();
+					accelSensorValues.setText(Float.valueOf(dT).toString());
+				}
 				
-				writer.println(str);
-				writer.flush();
 			}
 			
-		}
 		if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
+			float dT = 0;
+			if(timestampGyro!=0){
+				dT = (event.timestamp-timestampGyro)*NS2S;
+			}
+			timestampGyro = event.timestamp;
+
 			if(testingSensors){
-				showGyroValues(event.values);
+				showGyroValues(event.values,dT);
 			}
 			if(isSending){
-				
-				String str = "G:"+(int)System.currentTimeMillis()+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+				String str = "G:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+				code++;
 				writer.println(str);
 				writer.flush();
-				
 			}
 			
 		}
 		
 	}
 		
-	private void showAccelValues(float[] values){
+	private void showAccelValues(float[] values, float dT){
 		float x = values[0];
 		float y = values[1];
 		float z = values[2];
@@ -301,13 +322,15 @@ public class MainActivity extends Activity implements SensorEventListener{
 		//long actualTime = System.currentTimeMillis();
 		
 		
-		String accelString ="x: "+Float.valueOf(x).toString()+"\n"+
-							"y: "+Float.valueOf(y).toString()+"\n"+
-							"z: "+Float.valueOf(z).toString();
+		String accelString =
+//							"x: "+x+"\n"+
+//							"y: "+y+"\n"+
+//							"z: "+z+"\n"+
+							"timeAccel: "+dT;
 		accelSensorValues.setText(accelString);
 	}
 	
-	private void showGyroValues(float[] values){
+	private void showGyroValues(float[] values, float dT){
 		
 		float x = values[0];
 		float y = values[1];
@@ -315,9 +338,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		//long actualTime = System.currentTimeMillis();
 		
-		String gyroString = "alpha: "+Float.valueOf(x).toString()+"\n"+
-							"beta: "+Float.valueOf(y).toString()+"\n"+
-							"gamma: "+Float.valueOf(z).toString();
+		String gyroString = 
+//							"alpha: "+x+"\n"+
+//							"beta: "+y+"\n"+
+//							"gamma: "+z+"\n"+
+							"timeGyro: "+dT;
 		gyroSensorValues.setText(gyroString);
 		
 		
