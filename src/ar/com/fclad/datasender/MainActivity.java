@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -40,14 +41,16 @@ import android.widget.ToggleButton;
 public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
+	private boolean isRotationVectorActivated = false;
 	private boolean testingSensors;
 	private float timestampGyro;
 	private float timestampAccel;
+	private float timestampRotationVector;
 	private static final float NS2S = 1.0f / 1000000000.0f;
 	private long code;
 
 	
-	private TextView accelSensorValues, gyroSensorValues;
+	private TextView accelSensorValues, gyroSensorValues, rotationVectorSensorValues;
 	
 	// Server parameters
 	private static final String localServer = "10.0.0.1";
@@ -79,6 +82,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		accelSensorValues = (TextView) findViewById(R.id.AccelSensorValue);
 		gyroSensorValues = (TextView) findViewById(R.id.GyroSensorValue);
+		rotationVectorSensorValues = (TextView) findViewById(R.id.RotationVectorSensorValue);
+		
 		
 		TextView sensorInfo = (TextView) findViewById(R.id.availableSensors);
 		
@@ -96,6 +101,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		//sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
 		//sensorInfo.append("\n");
 		
+		sensorInfo.append("ROTATION VECT:\t");
+		Sensor deviceRotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+		sensorInfo.append(deviceRotationVector.getName()+"\n");
+		
 		// UI
 		
 		sendData = (ToggleButton) findViewById(R.id.sendData);
@@ -109,14 +118,18 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    super.onResume();
 	    // register this class as a listener for the orientation and
 	    // accelerometer sensors
+	    
+	    int sensorRate = SensorManager.SENSOR_DELAY_GAME;
 
 	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-		        SensorManager.SENSOR_DELAY_GAME);
+		        sensorRate);
 	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-		        SensorManager.SENSOR_DELAY_GAME);
-
+		        sensorRate);
+	    sensorManager.registerListener(this, 
+	    		sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR),
+	    		sensorRate);
 	    // connect to a socket that must be running in the server
 	    
 	   
@@ -159,6 +172,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 				
 			Log.d("MainActivity", "Is sending "+isSending);
 			return;
+		case R.id.RotationVectActivated:
+			isRotationVectorActivated = ((CheckBox) view).isChecked();
+			Log.d("MainActivity","Toggled Rotation vector sensor");
+			return;
+			
 		}
 	}
 	
@@ -315,6 +333,22 @@ public class MainActivity extends Activity implements SensorEventListener{
 			}
 			
 		}
+	
+		if((event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)&&isRotationVectorActivated){
+			float dT = 0;
+			if(timestampRotationVector!=0){
+				dT = (event.timestamp-timestampRotationVector)*NS2S;
+			}
+			if(testingSensors){
+				showRotationVectorValues(event.values, dT);
+			}
+			if(isSending){
+				String str = "R:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
+				code++;
+				writer.println(str);
+				writer.flush();
+			}
+		}
 		
 	}
 		
@@ -350,6 +384,22 @@ public class MainActivity extends Activity implements SensorEventListener{
 		gyroSensorValues.setText(gyroString);
 		
 		
+	}
+	
+	private void showRotationVectorValues(float[] values, float dT){
+		float x = values[0];
+		float y = values[1];
+		float z = values[2];
+		
+		//long actualTime = System.currentTimeMillis();
+		
+		
+		String rotationVectorString =
+							"x:\t"+String.format("%.4f", x)+"\t\t\t\t\t"+
+							"y:\t"+String.format("%.4f", y)+"\n"+
+							"z:\t"+String.format("%.4f", z)+"\t\t\t\t\t"+
+							"timeRot:\t"+String.format("%.4f", dT);
+		rotationVectorSensorValues.setText(rotationVectorString);
 	}
 
 	 

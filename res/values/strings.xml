@@ -8,10 +8,13 @@
     <string name="connect_local">Local connection</string>
     <string name="sensorTest_OFF">Test sensors</string>
     <string name="available_sensorTxt">Available Sensor List</string>
-    <string name="accelSensor_valuesTxt">Live Acceleration Sensor Values</string>
-    <string name="gyroSensor_valuesTxt">Live Gyro Sensor Values</string>
-    <string name="sensorTest_ON">Testing...</string>
+    <string name="accelSensor_valuesTxt"></string>
+    <string name="gyroSensor_valuesTxt"></string>
+    <string name="magneticSensor_valuesTxt"></string>
+    <string name="rotationVectorSensor_valuesTxt"></string>
+    <string name="sensorTest_ON">Testing&#8230;</string>
     <string name="sendData_OFF">Send Data</string>
     <string name="sendData_ON">Sending</string>
+     <string name="alternativeSensors">Rotation vect. activated</string>
 
 </resources>

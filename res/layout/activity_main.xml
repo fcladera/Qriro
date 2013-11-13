@@ -22,6 +22,13 @@
                    android:text="@string/available_sensorTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
+               <CheckBox
+                   android:id="@+id/RotationVectActivated"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:text="@string/alternativeSensors"
+                   android:onClick="onToggleClicked" />
+
                <ToggleButton
                    android:id="@+id/testSensors"
                    android:layout_width="fill_parent"
@@ -59,7 +66,7 @@
                    android:id="@+id/AccelSensorValue"
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
-                   android:layout_marginTop="20px"
+                   android:layout_marginTop="10dp"
                    android:text="@string/accelSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
@@ -67,8 +74,16 @@
                    android:id="@+id/GyroSensorValue"
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
-                   android:layout_marginTop="20px"
+                   android:layout_marginTop="10dp"
                    android:text="@string/gyroSensor_valuesTxt"
+                   android:textAppearance="?android:attr/textAppearanceSmall" />
+
+                 <TextView
+                   android:id="@+id/RotationVectorSensorValue"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:layout_marginTop="10dp"
+                   android:text="@string/rotationVectorSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
 
