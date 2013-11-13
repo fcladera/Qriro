@@ -1,7 +1,7 @@
 clear all;
 close all;
 %% Read log file
-filename = 'Tests/simpleMov_Rotation.dat';
+filename = 'Tests/Simple_Translation_test1.dat';
 delimiter = {';',':'};
 formatSpec = '%s%f%f%f%f%f%[^\n\r]';
 fileID = fopen(filename,'r');
@@ -42,6 +42,57 @@ gyroValues = gyroValues(1:gyroPointer-1,:);
 clearvars accelPointer gyroPointer val1 val2 val3 sensorType i
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Translation analysis
+figure;
+hold on;
+grid on;
+
+plot(accelValues(:,2),'r');
+plot(accelValues(:,3),'g');
+plot(accelValues(:,4),'b');
+
+%% Simple mean value correction
+accel_means = mean(accelValues(1:150,2:4));
+accelValues(:,2:4) =  accelValues(:,2:4)-repmat(accel_means,length(accelValues),1);
+  
+%% first integration
+accelIntegrated = zeros(length(accelValues),3);
+
+accelIntegrated(1,:) = accelValues(1,2:4)*accelValues(1,1);
+for i=2:length(accelValues)
+    accelIntegrated(i,:) = accelValues(i,1)*accelValues(i,2:4)+accelIntegrated(i-1,:);
+end;
+
+clearvars i
+
+figure;
+hold on;
+grid on;
+plot(accelIntegrated(:,1),'r');
+plot(accelIntegrated(:,2),'g');
+plot(accelIntegrated(:,3),'b');
+
+%% double integration
+position = zeros(length(accelValues),3);
+
+position(1,:) = accelIntegrated(1,1:3)*accelValues(1,1);
+for i=2:length(accelValues)
+    position(i,:) = accelValues(i,1)*accelIntegrated(i,1:3)+position(i-1,:);
+end;
+
+clearvars i
+
+figure;
+hold on;
+grid on;
+plot(position(:,1),'r');
+plot(position(:,2),'g');
+plot(position(:,3),'b');
+
+
+break;
+
+
 %% Gyro analysis
 %% Simple plot
 

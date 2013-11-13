@@ -30,7 +30,7 @@
 #define SIZE_VALUES 256
 #define SIZE_TCP_BUFFER 0x1000
 
-#define LOG_TO_FILE 0
+#define LOG_TO_FILE 1
 #define MEASURE_EXECUTION_TIME 0
 
 
@@ -291,7 +291,7 @@ int main(int argc, char **argv){
 									1.0, previous_rotation,instantaneous_rotation,
 									0.0, rot_matrix);
 						gsl_matrix_memcpy(previous_rotation,rot_matrix);
-						printMatrix(rot_matrix);
+						//printMatrix(rot_matrix);
 
 						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
 						//fflush(gp_gyro);
