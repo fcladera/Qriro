@@ -68,7 +68,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
@@ -83,17 +84,17 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		testingSensors = ((ToggleButton)findViewById(R.id.testSensors)).isChecked();
 		
-		sensorInfo.setText("GYRO\n");
+		sensorInfo.setText("GYRO:\t");
 		Sensor deviceGyro= sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 		sensorInfo.append(deviceGyro.getName()+"\n");
-		sensorInfo.append(Float.valueOf(deviceGyro.getResolution()).toString());
-		sensorInfo.append("\n");
+		//sensorInfo.append(Float.valueOf(deviceGyro.getResolution()).toString());
+		//sensorInfo.append("\n");
 		
-		sensorInfo.append("ACCEL\n");
+		sensorInfo.append("ACCEL:\t");
 		Sensor deviceAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
 		sensorInfo.append(deviceAccel.getName()+"\n");
-		sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
-		sensorInfo.append("\n");
+		//sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
+		//sensorInfo.append("\n");
 		
 		// UI
 		
@@ -292,7 +293,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 					code++;
 					writer.println(str);
 					writer.flush();
-					accelSensorValues.setText(Float.valueOf(dT).toString());
 				}
 				
 			}
@@ -327,10 +327,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		
 		String accelString =
-//							"x: "+x+"\n"+
-//							"y: "+y+"\n"+
-//							"z: "+z+"\n"+
-							"timeAccel: "+dT;
+							"x:\t"+String.format("%.4f", x)+"\t\t\t\t\t"+
+							"y:\t"+String.format("%.4f", y)+"\n"+
+							"z:\t"+String.format("%.4f", z)+"\t\t\t\t\t"+
+							"timeAccel:\t"+String.format("%.4f", dT);
 		accelSensorValues.setText(accelString);
 	}
 	
@@ -343,10 +343,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		//long actualTime = System.currentTimeMillis();
 		
 		String gyroString = 
-//							"alpha: "+x+"\n"+
-//							"beta: "+y+"\n"+
-//							"gamma: "+z+"\n"+
-							"timeGyro: "+dT;
+							"alpha: \t"+String.format("%.4f", x)+"\t\t"+
+							"beta:\t"+String.format("%.4f", y)+"\n"+
+							"gamma:\t"+String.format("%.4f", z)+"\t\t"+
+							"timeGyro:\t"+String.format("%.4f", dT);
 		gyroSensorValues.setText(gyroString);
 		
 		
