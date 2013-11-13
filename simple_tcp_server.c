@@ -20,6 +20,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_cblas.h>
+#include <gsl/gsl_blas.h>
+
 #include "fifo.h"
 #include "simple_tcp_server.h"
 
@@ -42,69 +46,12 @@
 // TODO
 /*
  * Improve reception - Using a cable less packets are lost?
- * Improve feedgnuplot plotting (if possible). Multiple plots in one window
- * Show data rate reception for each sensor. Reduce number of samples per second?
- * Convert to physic units!
- * Basic integration. Show drift error
+ * Convert to physic units! => Almost done...
+ * Basic integration. Show drift error in position
  * Get information from the magnetometer
  * Read imu and ahrs algorithms
  */
 int main(int argc, char **argv){
-
-#if 0
-	// This is an example how to fetch multiple lines from a char[]
-	FILE *fd = NULL;
-	fd = fopen("example.tst","r");
-	if (fd==NULL) perror(__FILE__);
-	char linea[MAX_REC_LEN];
-	printf("File opened\n");
-	/*
-	while (!feof(fd)) {
-	  double gyroValues[3];
-	  double timeValue;
-	  int scanresult = fscanf(fd,"%*c:%lf:%lf:%lf:%lf;\n",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
-	  printf("%d\n",scanresult);
-	  if( scanresult != 4){
-		  printf("EOF?\n");
-		  break;
-	  }
-
-	  //printf("Line %lf:%lf:%lf:%lf\n", timeValue,gyroValues[0],gyroValues[1],gyroValues[2]);
-	}
-	*/
-	fread(linea,1,MAX_REC_LEN,fd);
-	fclose(fd);
-	//printf("%s",linea);
-
-	char * glissant = linea;
-	while (*glissant!='\0') {
-		  double gyroValues[3];
-		  double timeValue;
-		  int scanresult = sscanf(glissant,"%*c:%lf:%lf:%lf:%lf;\n",&timeValue,gyroValues,gyroValues+1,gyroValues+2);
-		  printf("%d\n",scanresult);
-		  if( scanresult != 4){
-			  printf("EOF?\n");
-			  break;
-		  }
-
-		  printf("Line %lf:%lf:%lf:%lf\n", timeValue,gyroValues[0],gyroValues[1],gyroValues[2]);
-
-		  // jump to next line
-		  while(*(++glissant)!='\n');
-		  glissant++;
-
-	}
-	return 0;
-	#endif
-
-	// Accelerometer vectors (acceleration, velocity, position)
-	double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
-	//double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
-	//double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
-
-	// Gyro vectors (rotational velocity, position)
-	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
-	double alpha_pos[SIZE_VALUES], beta_pos[SIZE_VALUES], gamma_pos[SIZE_VALUES];
 
 
 	//---- check command line arguments ----
@@ -148,7 +95,6 @@ int main(int argc, char **argv){
 		exit(1);
 	}
 
-
   // Gnuplot pipe
   /* Create a FIFO we later use for communication gnuplot => our program. */
 	FILE  *gp_accel,  *gp_gyro, *gp_latency;
@@ -169,9 +115,7 @@ int main(int argc, char **argv){
 		  return 1;
 	}
 
-
 	printf("Connected to gnuplot.\n");
-
 
 	// Log file
 	FILE *logfile = NULL;
@@ -181,15 +125,40 @@ int main(int argc, char **argv){
 		if (logfile==NULL) perror(__FILE__);
 	}
 
+	// Accelerometer vectors (acceleration, velocity, position)
+	double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
+	//double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
+	//double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
+
+	// Gyro vectors (rotational velocity)
+	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
+
+	// rotational velocity, constant component
+	double 	alpha_vel_st=NAN,
+			beta_vel_st=NAN,
+			gamma_vel_st=NAN;
+
+	// Rotation matrices
+	gsl_matrix *Rx = gsl_matrix_calloc(3,3);
+	gsl_matrix *Ry = gsl_matrix_calloc(3,3);
+	gsl_matrix *Rz = gsl_matrix_calloc(3,3);
+	gsl_matrix *rot_matrix = gsl_matrix_calloc(3,3);
+	gsl_matrix *previous_rotation = gsl_matrix_calloc(3,3);
+	gsl_matrix *RxRy = gsl_matrix_calloc(3,3);
+	gsl_matrix *instantaneous_rotation = gsl_matrix_calloc(3,3);
+
+	// Time variables, useful to get system time
+	struct timespec spec;
+	double startTime, endTime;
 
 	for(;;){
 		//Each time the client connects, the buffers are clean
 		clearfifo(alpha_vel,SIZE_VALUES);
 		clearfifo(beta_vel,SIZE_VALUES);
 		clearfifo(gamma_vel,SIZE_VALUES);
-		clearfifo(alpha_pos,SIZE_VALUES);
-		clearfifo(beta_pos,SIZE_VALUES);
-		clearfifo(gamma_pos,SIZE_VALUES);
+		alpha_vel_st=NAN,
+		beta_vel_st=NAN,
+		gamma_vel_st=NAN;
 
 		//---- accept new connection ----
 		struct sockaddr_in fromAddr;
@@ -202,18 +171,21 @@ int main(int argc, char **argv){
 		printf("new connection from %s:%d\n",
 		  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
 
-		struct timespec spec;
-		double startTime, endTime;
+		gsl_matrix_set_identity(previous_rotation);
 
-		double alpha_vel_st=NAN,
-				beta_vel_st=NAN,
-				gamma_vel_st=NAN;
 		int counter_gyro=0;
 		for(;;){
-
+			gsl_matrix_set_zero(Rx);
+			gsl_matrix_set_zero(Ry);
+			gsl_matrix_set_zero(Rz);
+			gsl_matrix_set_zero(rot_matrix);
+			gsl_matrix_set_zero(RxRy);
+			gsl_matrix_set_zero(instantaneous_rotation);
 
 			// Get message from the client
 			char buffer[SIZE_TCP_BUFFER];
+			for(int i=0;i<SIZE_TCP_BUFFER;i++)
+				buffer[i]=0;
 			int nb=recv(dialogSocket,buffer,SIZE_TCP_BUFFER,0);
 			if(nb==-1) {
 				perror("recvfrom");
@@ -231,7 +203,6 @@ int main(int argc, char **argv){
 				fprintf(logfile,"%s",buffer);
 			}
 			buffer[nb]='\0';
-
 
 			//printf("from %s %d : %d bytes:\n%s\n",
 			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
@@ -263,8 +234,6 @@ int main(int argc, char **argv){
 
 				if(sensorType=='G'){
 
-
-					//printf("%d\n",counter_gyro);
 					if(counter_gyro<SIZE_VALUES){
 						loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
 						loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
@@ -280,18 +249,52 @@ int main(int argc, char **argv){
 						//printfifo(alpha_vel,SIZE_VALUES);
 					}
 					else{
+
+						// Store current angular velocity in a fifo
 						loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
 						loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
 						loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
-						double new_alpha_pos = alpha_pos[0]+alpha_vel[0]*timeValue;
-						double new_beta_pos = beta_pos[0]+beta_vel[0]*timeValue;
-						double new_gamma_pos = gamma_pos[0]+gamma_vel[0]*timeValue;
-						loadfifoMooving(new_alpha_pos,alpha_pos,SIZE_VALUES);
-						loadfifoMooving(new_beta_pos,beta_pos,SIZE_VALUES);
-						loadfifoMooving(new_gamma_pos,gamma_pos,SIZE_VALUES);
-						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
-						fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
-						fflush(gp_gyro);
+
+						// Integrate to calculate the instantaneous rotation
+						double alpha_pos_delta = alpha_vel[0]*timeValue;
+						double beta_pos_delta = beta_vel[0]*timeValue;
+						double gamma_pos_delta = gamma_vel[0]*timeValue;
+
+						//Calculate rotation matrices
+						gsl_matrix_set(Rx,0,0,1);
+						gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
+						gsl_matrix_set(Rx,1,2,-sin(alpha_pos_delta));
+						gsl_matrix_set(Rx,2,1,sin(alpha_pos_delta));
+						gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
+
+						gsl_matrix_set(Ry,0,0,cos(beta_pos_delta));
+						gsl_matrix_set(Ry,0,2,sin(beta_pos_delta));
+						gsl_matrix_set(Ry,1,1,1);
+						gsl_matrix_set(Ry,2,0,-sin(beta_pos_delta));
+						gsl_matrix_set(Ry,2,2,cos(beta_pos_delta));
+
+						gsl_matrix_set(Rz,0,0,cos(gamma_pos_delta));
+						gsl_matrix_set(Rz,0,1,-sin(gamma_pos_delta));
+						gsl_matrix_set(Rz,1,0,sin(gamma_pos_delta));
+						gsl_matrix_set(Rz,1,1,cos(gamma_pos_delta));
+						gsl_matrix_set(Rz,2,2,1);
+
+						gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+												1.0, Rx,Ry,
+												0.0, RxRy);
+						gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+												1.0, RxRy,Rz,
+												0.0, instantaneous_rotation);
+
+						// Add the instantaneous rotation to the previous one
+						gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+									1.0, previous_rotation,instantaneous_rotation,
+									0.0, rot_matrix);
+						gsl_matrix_memcpy(previous_rotation,rot_matrix);
+						printMatrix(rot_matrix);
+
+						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
+						//fflush(gp_gyro);
 						//fprintf(gp_latency,"%lf\n",timeValue);
 						//fflush(gp_latency);
 					}
@@ -334,7 +337,9 @@ int main(int argc, char **argv){
 		//---- close dialog socket ----
 		printf("client disconnected\n");
 		close(dialogSocket);
-  }
+	}
+
+
 
   //---- close listen socket ----
   close(listenSocket);
@@ -343,6 +348,16 @@ int main(int argc, char **argv){
   pclose(gp_accel);
   pclose(gp_gyro);
   pclose(gp_latency);
+
+
+  gsl_matrix_free(Rx);
+  gsl_matrix_free(Ry);
+  gsl_matrix_free(Rz);
+  gsl_matrix_free(rot_matrix);
+  gsl_matrix_free(RxRy);
+  gsl_matrix_free(instantaneous_rotation);
+
+
   if(LOG_TO_FILE){
 	  fclose(logfile);
   }
@@ -353,3 +368,19 @@ int main(int argc, char **argv){
 double toDegrees(double radians){
 	return (radians*180./M_PI);
 }
+
+void printMatrix(gsl_matrix *A){
+
+	int row, column;
+	int rows = A->size1;
+	int columns = A->size2;
+	for(row=0;row<rows;row++){
+		for(column = 0;column<columns;column++){
+			printf("%f\t",gsl_matrix_get(A,row,column));
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+
