@@ -15,6 +15,9 @@
     <string name="sensorTest_ON">Testing&#8230;</string>
     <string name="sendData_OFF">Send Data</string>
     <string name="sendData_ON">Sending</string>
-     <string name="alternativeSensors">Rotation vect. activated</string>
+    <string name="alternativeSensors">Rotation vect. activated</string>
+    <string name="title_activity_draw">DrawActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
 
 </resources>

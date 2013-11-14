@@ -17,6 +17,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -181,25 +182,42 @@ public class MainActivity extends Activity implements SensorEventListener{
 	}
 	
 	public void onClick(View view){
-		if(!isConnected){
-			switch(view.getId()){
-			case R.id.connect_Remote:
+		
+		switch(view.getId()){
+		case R.id.connect_Remote:
+			if(!isConnected){
 				Log.d("mainActivity", "Connection to remote asked");
 				new Connect().execute(remoteServer);
-				return;
-			case R.id.connect_Local:
+			}
+			else{
+				disconnect();
+				if(isSending){
+					sendData.setChecked(false);
+					isSending=false;
+				}
+			}
+			return;
+		case R.id.connect_Local:
+			if(!isConnected){
 				Log.d("mainActivity", "Connection to local asked");
 				new Connect().execute(localServer);
-				return;
 			}
-		}
-		else{
-			disconnect();
-			if(isSending){
-				sendData.setChecked(false);
-				isSending=false;
+			else{
+				disconnect();
+				if(isSending){
+					sendData.setChecked(false);
+					isSending=false;
+				}
 			}
+			return;
+		case R.id.drawButton:
+			Intent intent = new Intent(MainActivity.this, DrawActivity.class);
+			startActivity(intent);
+			break;
+		
 		}
+		
+		
 		
 	}
 	
