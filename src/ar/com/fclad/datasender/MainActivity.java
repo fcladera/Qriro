@@ -137,14 +137,14 @@ public class MainActivity extends Activity implements SensorEventListener{
 	@Override
 	  protected void onResume() {
 	    super.onResume();
-	    // register this class as a listener for the orientation and
-	    // accelerometer sensors
-	    
-	    int sensorRate = SensorManager.SENSOR_DELAY_GAME;
-
-	    sensorManager.registerListener(this,
-		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-		        sensorRate);
+	
+	   /*
+	   if(testingSensors){
+		   sensorManager.registerListener(this,
+			        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+			        SensorManager.SENSOR_DELAY_GAME);
+	   }
+	   */
 
 	    registerReceiver(receiver, new IntentFilter(TCPclientService.NOTIFICATION));
 	}
@@ -155,8 +155,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 		super.onPause();
 		
 		unregisterReceiver(receiver);
-		
-		sensorManager.unregisterListener(this);
+		if(testingSensors)
+			sensorManager.unregisterListener(this);
 		/*
 		if(socket!=null){
 			if(isSending){
@@ -176,21 +176,13 @@ public class MainActivity extends Activity implements SensorEventListener{
 		case R.id.testSensors:
 			Log.w("MainActivity","Toggled testSensor button");
 			testingSensors = ((ToggleButton) view).isChecked();
+			if(testingSensors)
+			 sensorManager.registerListener(this,
+		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+		        SensorManager.SENSOR_DELAY_GAME);
+			else
+				sensorManager.unregisterListener(this);
 		return;
-		//case R.id.sendData:
-			/*
-			isSending = ((ToggleButton) view).isChecked();
-			if(isSending){
-				createWriterStream();
-			}
-			else{
-				destroyWriterStream();
-			}
-				
-			Log.d("MainActivity", "Is sending "+isSending);
-			*/
-		//	return;
-				
 		}
 	}
 	
@@ -293,9 +285,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 			}
 			timestampGyro = event.timestamp;
 
-			if(testingSensors){
-				showGyroValues(event.values,dT);
-			}
+			showGyroValues(event.values,dT);
+			
 //			if(isSending){
 //				String str = "G:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
 //				code++;
