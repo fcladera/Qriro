@@ -44,16 +44,13 @@ import android.widget.ToggleButton;
 public class MainActivity extends Activity implements SensorEventListener{
 	
 	private SensorManager sensorManager;
-	private boolean isRotationVectorActivated = false;
 	private boolean testingSensors;
 	private float timestampGyro;
-	private float timestampAccel;
-	private float timestampRotationVector;
 	private static final float NS2S = 1.0f / 1000000000.0f;
 	private long code;
 
 	
-	private TextView accelSensorValues, gyroSensorValues, rotationVectorSensorValues;
+	private TextView gyroSensorValues;
 	
 	// Server parameters
 	private static final String localServer = "10.0.0.1";
@@ -82,11 +79,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 		// SENSORS
 		
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		
-		accelSensorValues = (TextView) findViewById(R.id.AccelSensorValue);
+
 		gyroSensorValues = (TextView) findViewById(R.id.GyroSensorValue);
-		rotationVectorSensorValues = (TextView) findViewById(R.id.RotationVectorSensorValue);
-		
 		
 		TextView sensorInfo = (TextView) findViewById(R.id.availableSensors);
 		
@@ -94,28 +88,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		sensorInfo.setText("GYRO:\t");
 		Sensor deviceGyro= sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-		sensorInfo.append(deviceGyro.getName()+"\n");
-		//sensorInfo.append(Float.valueOf(deviceGyro.getResolution()).toString());
-		//sensorInfo.append("\n");
-		
-		sensorInfo.append("ACCEL:\t");
-		Sensor deviceAccel = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-		sensorInfo.append(deviceAccel.getName()+"\n");
-		//sensorInfo.append(Float.valueOf(deviceAccel.getResolution()).toString());
-		//sensorInfo.append("\n");
-		
-		sensorInfo.append("ROTATION VECT:\t");
-		Sensor deviceRotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-		sensorInfo.append(deviceRotationVector.getName()+"\n");
-		
-
-		// SOCKET
-		//new Thread(new ClientThread()).start();
-		
+		sensorInfo.append(deviceGyro.getName()+"\n");	
 		
 		// UI
 		
-		//sendData = (ToggleButton) findViewById(R.id.sendData);
 		connectLocal = (Button) findViewById(R.id.connect_Local);
 		connectRemote = (Button) findViewById(R.id.connect_Remote);
 		disconnect = (Button) findViewById(R.id.disconnect);
@@ -167,19 +143,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    int sensorRate = SensorManager.SENSOR_DELAY_GAME;
 
 	    sensorManager.registerListener(this,
-		        sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
-		        sensorRate);
-	    sensorManager.registerListener(this,
 		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
 		        sensorRate);
-	    sensorManager.registerListener(this, 
-	    		sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR),
-	    		sensorRate);
-	    // connect to a socket that must be running in the server
-	    
+
 	    registerReceiver(receiver, new IntentFilter(TCPclientService.NOTIFICATION));
-	    
-	   
 	}
 
 	@Override
@@ -204,8 +171,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    
 	}
 	
-	
-	
 	public void onToggleClicked(View view){	
 		switch (view.getId()){
 		case R.id.testSensors:
@@ -225,16 +190,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 			Log.d("MainActivity", "Is sending "+isSending);
 			*/
 		//	return;
-		case R.id.RotationVectActivated:
-			isRotationVectorActivated = ((CheckBox) view).isChecked();
-			Log.d("MainActivity","Toggled Rotation vector sensor");
-			return;
-			
+				
 		}
 	}
 	
 	public void onClick(View view){
-		
 		switch(view.getId()){
 		case R.id.connect_Remote:
 			Log.d("mainActivity", "Connection to remote asked");
@@ -289,28 +249,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 			return;
 		
 		}
-		
-		
-		
 	}
-	
-//	private void disconnect(){
-//		// disconnect socket
-//		try {
-//			//socket.close();
-//		} catch (IOException e) {
-//			Log.e("MainActivity", "Error on disconnect");
-//			//e.printStackTrace();
-//		}
-//		sendData.setEnabled(false);
-//		connectRemote.setEnabled(true);
-//		connectLocal.setEnabled(true);
-//		isConnected = false;
-//		socket = null;
-//	}
-
-	
-	
 
 //	private void createWriterStream(){
 //		try {
@@ -346,26 +285,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	// TODO: arreglar bug raro con el timestamp y el dt que es siempre nulo! 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
-			float dT = 0;
-			if(timestampAccel!=0){
-				dT =  (event.timestamp-timestampAccel)*NS2S;
-			}
-			timestampAccel = event.timestamp;
-			
-			if(testingSensors){
-				showAccelValues(event.values,dT);
-			}
-//			if(isSending){
-//	
-//					String str = "A:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
-//					code++;
-//					writer.println(str);
-//					writer.flush();
-//				}
-//				
-			}
-			
+		
 		if(event.sensor.getType() == Sensor.TYPE_GYROSCOPE){
 			float dT = 0;
 			if(timestampGyro!=0){
@@ -383,40 +303,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 //				writer.flush();
 //			}
 			
-		}
-	
-		if((event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR)&&isRotationVectorActivated){
-			float dT = 0;
-			if(timestampRotationVector!=0){
-				dT = (event.timestamp-timestampRotationVector)*NS2S;
-			}
-			if(testingSensors){
-				showRotationVectorValues(event.values, dT);
-			}
-//			if(isSending){
-//				String str = "R:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
-//				code++;
-//				writer.println(str);
-//				writer.flush();
-//			}
-		}
-		
-	}
-		
-	private void showAccelValues(float[] values, float dT){
-		float x = values[0];
-		float y = values[1];
-		float z = values[2];
-		
-		//long actualTime = System.currentTimeMillis();
-		
-		
-		String accelString =
-							"x:\t"+String.format("%.4f", x)+"\t\t\t\t\t"+
-							"y:\t"+String.format("%.4f", y)+"\n"+
-							"z:\t"+String.format("%.4f", z)+"\t\t\t\t\t"+
-							"timeAccel:\t"+String.format("%.4f", dT);
-		accelSensorValues.setText(accelString);
+		}	
 	}
 	
 	private void showGyroValues(float[] values, float dT){
@@ -432,27 +319,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 							"beta:\t"+String.format("%.4f", y)+"\n"+
 							"gamma:\t"+String.format("%.4f", z)+"\t\t"+
 							"timeGyro:\t"+String.format("%.4f", dT);
-		gyroSensorValues.setText(gyroString);
-		
-		
+		gyroSensorValues.setText(gyroString);	
 	}
-	
-	private void showRotationVectorValues(float[] values, float dT){
-		float x = values[0];
-		float y = values[1];
-		float z = values[2];
-		
-		//long actualTime = System.currentTimeMillis();
-		
-		
-		String rotationVectorString =
-							"x:\t"+String.format("%.4f", x)+"\t\t\t\t\t"+
-							"y:\t"+String.format("%.4f", y)+"\n"+
-							"z:\t"+String.format("%.4f", z)+"\t\t\t\t\t"+
-							"timeRot:\t"+String.format("%.4f", dT);
-		rotationVectorSensorValues.setText(rotationVectorString);
-	}
-
-	 
-
 }

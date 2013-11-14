@@ -22,13 +22,7 @@
                    android:text="@string/available_sensorTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
-               <CheckBox
-                   android:id="@+id/RotationVectActivated"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:text="@string/alternativeSensors"
-                   android:onClick="onToggleClicked" />
-
+               
                <ToggleButton
                    android:id="@+id/testSensors"
                    android:layout_width="fill_parent"
