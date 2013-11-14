@@ -52,21 +52,20 @@
                    android:text="@string/connect_local" 
                    android:onClick="onClick"/>
 
-               <ToggleButton
-                   android:id="@+id/sendData"
+               <Button
+                   android:id="@+id/disconnect"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
+                   android:text="Disconnect"
                    android:enabled="false"
-                   android:textOff="@string/sendData_OFF"
-                   android:textOn="@string/sendData_ON" 
-                   android:onClick="onToggleClicked"
-                   />
+                   android:onClick="onClick" />
 
                <Button
                    android:id="@+id/drawButton"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
                    android:text="Start draw" 
+                   android:enabled="false"
                    android:onClick="onClick"/>
 
                <TextView
