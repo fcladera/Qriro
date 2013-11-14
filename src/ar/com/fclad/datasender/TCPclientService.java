@@ -1,6 +1,8 @@
 package ar.com.fclad.datasender;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -31,6 +33,8 @@ public class TCPclientService extends Service {
 	public static final String PORT = "port";
 	public static final int CONNECT = 1;
 	public static final int DISCONNECT = 0;
+	public static final int SENDMSG = 10;
+	public static final String MSG  = "msg";
 	
 	public static final String STATUS = "status"; 
 	public static final int CONNECTED = 1;
@@ -40,7 +44,6 @@ public class TCPclientService extends Service {
 	
 	private Socket socket;
 	PrintWriter writer = null;
-	private boolean isSending = false;
 	private boolean isConnected = false;
 	
 	private String server = null;
@@ -79,6 +82,11 @@ public class TCPclientService extends Service {
 	    		stopSelf();	// Destroy service on disconnection
 	    			
 	    		break;
+	    	case SENDMSG:
+	    		String line = msg.getData().getString(MSG);
+	    		writer.println(line);
+	    		writer.flush();
+	    		return;
 	    	default:
 	    		break;
 	    	
@@ -140,6 +148,7 @@ public class TCPclientService extends Service {
 		protected void onPostExecute(String result){
 			if(isConnected){
 				Toast.makeText(getApplicationContext(), "Successfully connected to "+result, Toast.LENGTH_SHORT).show();
+				createWriterStream();
 				//if(result==localServer){
 					//connectRemote.setEnabled(false);
 			//	}
@@ -157,10 +166,26 @@ public class TCPclientService extends Service {
 		
 	}
 	
+	private void createWriterStream(){
+	try {
+		 writer = new PrintWriter(new BufferedWriter(
+				new OutputStreamWriter(socket.getOutputStream())),
+				true);
+	} catch (IOException e) {
+		e.printStackTrace();
+		Log.e("MainActivity", "Error on createWriterStream");
+	}
+	}
+
+	private void destroyWriterStream(){
+		writer = null;
+	}
+	
 	private void disconnect(){
 		// disconnect socket
 		try {
 			socket.close();
+			destroyWriterStream();
 		} catch (IOException e) {
 			Log.e("MainActivity", "Error on disconnect");
 			stopSelf();

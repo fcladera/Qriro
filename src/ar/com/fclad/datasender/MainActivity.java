@@ -243,23 +243,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 		}
 	}
 
-//	private void createWriterStream(){
-//		try {
-//			 writer = new PrintWriter(new BufferedWriter(
-//					new OutputStreamWriter(socket.getOutputStream())),
-//					true);
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//			Log.e("MainActivity", "Error on createWriterStream");
-//		}
-//	}
-//	
-//	private void destroyWriterStream(){
-//		writer = null;
-//	}
-	
-	
-
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.

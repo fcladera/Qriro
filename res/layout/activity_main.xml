@@ -50,7 +50,7 @@
                    android:id="@+id/disconnect"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
-                   android:text="Disconnect"
+                   android:text="@string/disconnect"
                    android:enabled="false"
                    android:onClick="onClick" />
 
@@ -58,17 +58,12 @@
                    android:id="@+id/drawButton"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
-                   android:text="Start draw" 
+                   android:text="@string/startDraw"
                    android:enabled="false"
                    android:onClick="onClick"/>
 
-               <TextView
-                   android:id="@+id/AccelSensorValue"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:layout_marginTop="10dp"
-                   android:text="@string/accelSensor_valuesTxt"
-                   android:textAppearance="?android:attr/textAppearanceSmall" />
+
+               
 
                <TextView
                    android:id="@+id/GyroSensorValue"
@@ -78,13 +73,7 @@
                    android:text="@string/gyroSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
 
-                 <TextView
-                   android:id="@+id/RotationVectorSensorValue"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:layout_marginTop="10dp"
-                   android:text="@string/rotationVectorSensor_valuesTxt"
-                   android:textAppearance="?android:attr/textAppearanceSmall" />
+               
            </LinearLayout>
  		
 </RelativeLayout>
