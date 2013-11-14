@@ -36,14 +36,11 @@
             android:theme="@style/FullscreenTheme" >
         </activity>
        
-        <service
-		  android:name="TCPclientService"
-		  android:icon="@drawable/ic_launcher"
-		  android:label="@string/service_name"
-  		>
-		</service> 
+         <service android:name=".TCPclientService"
+            android:exported="false"
+            android:enabled="true" >
+        </service>
+        
     </application>
     
-    
-
 </manifest>

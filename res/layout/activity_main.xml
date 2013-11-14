@@ -92,8 +92,6 @@
                    android:layout_marginTop="10dp"
                    android:text="@string/rotationVectorSensor_valuesTxt"
                    android:textAppearance="?android:attr/textAppearanceSmall" />
-
-
            </LinearLayout>
  		
 </RelativeLayout>
