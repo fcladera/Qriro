@@ -157,19 +157,12 @@ public class MainActivity extends Activity implements SensorEventListener{
 			i.putExtra(TCPclientService.PORT, port);
 			i.putExtra(TCPclientService.SERVER, remoteServer);
 			startService(i);
-			
-			/*if(!isConnected){
-				
-				new Connect().execute(remoteServer);
+			if(testingSensors){
+				sensorManager.unregisterListener(this);
+				testSensors.setChecked(false);
 			}
-			else{
-				disconnect();
-				if(isSending){
-					sendData.setChecked(false);
-					isSending=false;
-				}
-			}*/
 			return;
+			
 		case R.id.connect_Local:
 			Log.d("mainActivity", "Connection to local");
 			Intent serviceIntent = new Intent(this, TCPclientService.class);
@@ -177,19 +170,10 @@ public class MainActivity extends Activity implements SensorEventListener{
 			serviceIntent.putExtra(TCPclientService.SERVER, localServer);
 			serviceIntent.putExtra(TCPclientService.PORT, port);
 			startService(serviceIntent);
-			
-			/*
-			if(!isConnected){
-				Log.d("mainActivity", "Connection to local asked");
-				new Connect().execute(localServer);
+			if(testingSensors){
+				sensorManager.unregisterListener(this);
+				testSensors.setChecked(false);
 			}
-			else{
-				disconnect();
-				if(isSending){
-					sendData.setChecked(false);
-					isSending=false;
-				}
-			}*/
 			return;
 			
 		case R.id.disconnect:
