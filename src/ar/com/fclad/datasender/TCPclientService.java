@@ -35,6 +35,7 @@ public class TCPclientService extends Service {
 	public static final int DISCONNECT = 0;
 	public static final int SENDMSG = 10;
 	public static final String MSG  = "msg";
+	public static final String ORIGIN = "origin";
 	
 	public static final String STATUS = "status"; 
 	public static final int CONNECTED = 1;
@@ -51,6 +52,7 @@ public class TCPclientService extends Service {
 	
 	private static final int timeout = 1000;
 
+	private long code;
 	
 	
 	public TCPclientService() {
@@ -83,7 +85,9 @@ public class TCPclientService extends Service {
 	    			
 	    		break;
 	    	case SENDMSG:
-	    		String line = msg.getData().getString(MSG);
+	    		String line = msg.getData().getString(ORIGIN)+":"+code+":";
+	    		line += msg.getData().getString(MSG)+";";
+	    		code++;
 	    		writer.println(line);
 	    		writer.flush();
 	    		return;
@@ -220,7 +224,7 @@ public class TCPclientService extends Service {
 	
 	 @Override
 	  public int onStartCommand(Intent intent, int flags, int startId) {
-	    Log.w("TCPclientService","Service started");
+	    //Log.w("TCPclientService","Service started");
 	    Message msg = mServiceHandler.obtainMessage();
 	    msg.arg1 = startId;
 	    msg.setData(intent.getExtras());

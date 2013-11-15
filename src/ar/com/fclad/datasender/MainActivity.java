@@ -47,7 +47,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private boolean testingSensors;
 	private float timestampGyro;
 	private static final float NS2S = 1.0f / 1000000000.0f;
-	private long code;
+
 
 	
 	private TextView gyroSensorValues;

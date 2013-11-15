@@ -1,6 +1,7 @@
 package ar.com.fclad.datasender;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -65,13 +66,29 @@ public class DrawView extends View {
 			      float deltaX = x-oldX;
 			      float deltaY = y-oldY;
 			      
+			     String line = "";
 			     if(Math.abs(deltaX)> sensibilityFinger){
 			    	 //Log.w("DrawView",deltaX>0 ? "MoveRight" : "MoveLeft");
+			    	 line += deltaX+":";
+			     }
+			     else{
+			    	 line += 0+":";
 			     }
 			     
 			     if(Math.abs(deltaY) > sensibilityFinger){
 			    	// Log.w("DrawView", deltaY> 0 ? "MoveDown" : "MoveUp");
+			    	 line += deltaY+":";
 			     }
+			     else{
+			    	 line += 0+":";
+			     }
+			     line += 0;
+			     
+			     Intent msgIntent = new Intent(getContext(),TCPclientService.class);
+			     msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
+		    	 msgIntent.putExtra(TCPclientService.ORIGIN, "S");
+		    	 msgIntent.putExtra(TCPclientService.MSG,line);
+		    	 getContext().startService(msgIntent);
 
 			      oldX = x;
 			      oldY = y;
@@ -101,6 +118,14 @@ public class DrawView extends View {
     	  if(circleRadius<1)
     		  circleRadius = 1;
     	  //Log.w("DrawView",""+deltaScale);
+    	  
+    	  String msg = "0:0:0:"+deltaScale;
+    	  
+    	  Intent msgIntent = new Intent(getContext(), TCPclientService.class);
+    	  msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
+    	  msgIntent.putExtra(TCPclientService.ORIGIN, "S");
+    	  msgIntent.putExtra(TCPclientService.MSG,msg);
+    	  getContext().startService(msgIntent);
       }
       
       oldScale = scaledValue;
