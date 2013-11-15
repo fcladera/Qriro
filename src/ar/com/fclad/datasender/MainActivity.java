@@ -57,8 +57,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
@@ -235,8 +233,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 		float x = values[0];
 		float y = values[1];
 		float z = values[2];
-		
-		//long actualTime = System.currentTimeMillis();
 		
 		String gyroString = 
 							"alpha: \t"+String.format("%.4f", x)+"\t\t"+
