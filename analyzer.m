@@ -1,7 +1,7 @@
 clear all;
 close all;
 %% Read log file
-filename = 'Tests/Simple_Translation_test1.dat';
+filename = 'Tests/Rotation_test3.dat';
 delimiter = {';',':'};
 formatSpec = '%s%f%f%f%f%f%[^\n\r]';
 fileID = fopen(filename,'r');
@@ -42,56 +42,94 @@ gyroValues = gyroValues(1:gyroPointer-1,:);
 clearvars accelPointer gyroPointer val1 val2 val3 sensorType i
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Translation analysis
-figure;
-hold on;
-grid on;
-
-plot(accelValues(:,2),'r');
-plot(accelValues(:,3),'g');
-plot(accelValues(:,4),'b');
-
-%% Simple mean value correction
-accel_means = mean(accelValues(1:150,2:4));
-accelValues(:,2:4) =  accelValues(:,2:4)-repmat(accel_means,length(accelValues),1);
-  
-%% first integration
-accelIntegrated = zeros(length(accelValues),3);
-
-accelIntegrated(1,:) = accelValues(1,2:4)*accelValues(1,1);
-for i=2:length(accelValues)
-    accelIntegrated(i,:) = accelValues(i,1)*accelValues(i,2:4)+accelIntegrated(i-1,:);
-end;
-
-clearvars i
-
-figure;
-hold on;
-grid on;
-plot(accelIntegrated(:,1),'r');
-plot(accelIntegrated(:,2),'g');
-plot(accelIntegrated(:,3),'b');
-
-%% double integration
-position = zeros(length(accelValues),3);
-
-position(1,:) = accelIntegrated(1,1:3)*accelValues(1,1);
-for i=2:length(accelValues)
-    position(i,:) = accelValues(i,1)*accelIntegrated(i,1:3)+position(i-1,:);
-end;
-
-clearvars i
-
-figure;
-hold on;
-grid on;
-plot(position(:,1),'r');
-plot(position(:,2),'g');
-plot(position(:,3),'b');
-
-
-break;
-
+% %% Translation analysis
+% figure;
+% hold on;
+% grid on;
+% 
+% plot(accelValues(:,2),'r');
+% plot(accelValues(:,3),'g');
+% plot(accelValues(:,4),'b');
+% 
+% %% Simple mean value correction
+% accel_means = mean(accelValues(1:150,2:4));
+% accelValues(:,2:4) =  accelValues(:,2:4)-repmat(accel_means,length(accelValues),1);
+% 
+% % %% Kalman filter test
+% % X = [0;0];  % liner state space
+% % 
+% % for i = 1:length(accelValues)
+% %     dT = accelValues(i,1);
+% %     F = [1 dT; 0 1];
+% %     G = [dT^2/2;dT];
+% %     
+% %     
+% % end;
+% % 
+% % break;
+% 
+% 
+% 
+% %% fir filter
+% %f = [0 0.05 0.6 0.6 1];
+% filter_size = 256;
+% f = [0 0.05 0.05 1];
+% m = [ 1 1 0 0];
+% b = fir2(filter_size,f,m);
+% %b = ones(1,filter_size)*1/filter_size;
+% filtered = zeros(length(accelValues)-filter_size,3);
+% for i = 1:length(accelValues)-filter_size
+%     for j = 0:filter_size-1
+%         filtered(i,:) = filtered(i,:) + accelValues(i+j,2:4)*b(j+1);
+%     end
+% end;
+% 
+% clearvars i j;
+% 
+% figure;
+% hold on;
+% grid on;
+% plot(filtered(:,1),'r');
+% plot(filtered(:,2),'g');
+% plot(filtered(:,3),'b');
+% 
+% %% first integration
+% 
+% accelIntegrated = zeros(length(filtered),3);
+% 
+% accelIntegrated(1,:) = filtered(1,1:3)*accelValues(1,1);
+% for i=2:length(filtered)
+%     accelIntegrated(i,:) = accelValues(i,1)*filtered(i,:)+accelIntegrated(i-1,:);
+% end;
+% 
+% clearvars i
+% 
+% figure;
+% hold on;
+% grid on;
+% plot(accelIntegrated(:,1),'r');
+% plot(accelIntegrated(:,2),'g');
+% plot(accelIntegrated(:,3),'b');
+% 
+% %% double integration
+% position = zeros(length(filtered),3);
+% 
+% position(1,:) = accelIntegrated(1,1:3)*accelValues(1,1);
+% for i=2:length(filtered)
+%     position(i,:) = accelValues(i,1)*accelIntegrated(i,1:3)+position(i-1,:);
+% end;
+% 
+% clearvars i
+% 
+% figure;
+% hold on;
+% grid on;
+% plot(position(:,1),'r');
+% plot(position(:,2),'g');
+% plot(position(:,3),'b');
+% 
+% 
+% break;
 
 %% Gyro analysis
 %% Simple plot
