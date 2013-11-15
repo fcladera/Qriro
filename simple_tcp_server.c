@@ -30,7 +30,7 @@
 #define SIZE_VALUES 256
 #define SIZE_TCP_BUFFER 0x1000
 
-#define LOG_TO_FILE 1
+#define LOG_TO_FILE 0
 #define MEASURE_EXECUTION_TIME 0
 
 
@@ -126,8 +126,8 @@ int main(int argc, char **argv){
 	}
 
 	// Accelerometer vectors (acceleration, velocity, position)
-	double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
-	//double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
+	//double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
+	double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
 	//double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
 
 	// Gyro vectors (rotational velocity)
@@ -204,8 +204,8 @@ int main(int argc, char **argv){
 			}
 			buffer[nb]='\0';
 
-			//printf("from %s %d : %d bytes:\n%s\n",
-			//	inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+			printf("from %s %d : %d bytes:\n%s\n",
+				inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 
 			char * sliding_pointer = buffer;
 			while (*sliding_pointer!='\0') {
@@ -214,7 +214,7 @@ int main(int argc, char **argv){
 				double timeValue;
 				long frameID;
 
-				if((*sliding_pointer!='G')&&(*sliding_pointer!='A')){
+				if((*sliding_pointer!='G')&&(*sliding_pointer!='S')){
 					fprintf(stderr,"ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
 							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
@@ -300,11 +300,11 @@ int main(int argc, char **argv){
 					}
 
 				}
-				else if(sensorType=='A'){
+				else if(sensorType=='S'){
 
-					loadfifoMooving(values[0],x_accel,SIZE_VALUES);
-					loadfifoMooving(values[1],y_accel,SIZE_VALUES);
-					loadfifoMooving(values[2],z_accel,SIZE_VALUES);
+					loadfifoMooving(values[0],x_vel,SIZE_VALUES);
+					loadfifoMooving(values[1],y_vel,SIZE_VALUES);
+					loadfifoMooving(values[2],z_vel,SIZE_VALUES);
 					fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
 					fflush(gp_accel);
 
