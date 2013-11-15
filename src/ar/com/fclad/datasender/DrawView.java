@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -66,23 +65,25 @@ public class DrawView extends View {
 			      float deltaX = x-oldX;
 			      float deltaY = y-oldY;
 			      
-			     String line = "";
-			     if(Math.abs(deltaX)> sensibilityFinger){
+			     String line = "0:";
+			     if((Math.abs(deltaX)> sensibilityFinger)&&(Math.abs(deltaY) > sensibilityFinger)){
 			    	 //Log.w("DrawView",deltaX>0 ? "MoveRight" : "MoveLeft");
-			    	 line += deltaX+":";
+			    	 line += deltaX+":"+deltaY;
 			     }
-			     else{
-			    	 line += 0+":";
+			     else if(Math.abs(deltaX)> sensibilityFinger){
+			    	 line += deltaX+":"+0;
 			     }
 			     
-			     if(Math.abs(deltaY) > sensibilityFinger){
+			     else if(Math.abs(deltaY) > sensibilityFinger){
 			    	// Log.w("DrawView", deltaY> 0 ? "MoveDown" : "MoveUp");
-			    	 line += deltaY+":";
+			    	 line += 0+":"+deltaY;
 			     }
 			     else{
-			    	 line += 0+":";
+			    	 return false;
 			     }
-			     line += 0;
+			     
+			     line += ":"+0;
+			     //Log.w("DrawView",line);
 			     
 			     Intent msgIntent = new Intent(getContext(),TCPclientService.class);
 			     msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
@@ -119,7 +120,7 @@ public class DrawView extends View {
     		  circleRadius = 1;
     	  //Log.w("DrawView",""+deltaScale);
     	  
-    	  String msg = "0:0:0:"+deltaScale;
+    	  String msg = "0:0:0:"+deltaScale*10;
     	  
     	  Intent msgIntent = new Intent(getContext(), TCPclientService.class);
     	  msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);

@@ -26,22 +26,20 @@ public class DrawActivity extends Activity implements SensorEventListener {
 	
 	@Override
 	protected void onPause() {
-		sensorManager.unregisterListener(this);
+//		sensorManager.unregisterListener(this);
 		super.onPause();
 	}
 
 	@Override
 	protected void onResume() {
-		sensorManager.registerListener(this,
-		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-		        SensorManager.SENSOR_DELAY_GAME);
+//		sensorManager.registerListener(this,
+//		        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
+//		        SensorManager.SENSOR_DELAY_GAME);
 		super.onResume();
 	}
 
 	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// TODO Auto-generated method stub
-		
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {		
 	}
 
 	@Override

@@ -1,19 +1,9 @@
 package ar.com.fclad.datasender;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
-
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -26,9 +16,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.ToggleButton;
 
 // Resources used to write this code:
@@ -47,8 +35,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private boolean testingSensors;
 	private float timestampGyro;
 	private static final float NS2S = 1.0f / 1000000000.0f;
-
-
 	
 	private TextView gyroSensorValues;
 	
@@ -109,22 +95,12 @@ public class MainActivity extends Activity implements SensorEventListener{
 					switch(bundle.getInt(TCPclientService.STATUS)){
 					case TCPclientService.CONNECTED:
 						Log.d("MainActivity", "Service said connected");
-						connectLocal.setEnabled(false);
-						connectRemote.setEnabled(false);
-						startDraw.setEnabled(true);
-						disconnect.setEnabled(true);
-						testSensors.setEnabled(false);
-						
-						
+						enableUIbuttons(true);
 						return;
 					
 					case TCPclientService.DISCONNECT:
 						Log.d("MainActivity", "Service said disconnected");
-						connectLocal.setEnabled(true);
-						connectRemote.setEnabled(true);
-						startDraw.setEnabled(false);
-						disconnect.setEnabled(false);
-						testSensors.setEnabled(true);
+						enableUIbuttons(false);
 						return;
 					}
 				}
@@ -134,19 +110,16 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 	}
 	
+	
+	
 	@Override
 	  protected void onResume() {
 	    super.onResume();
-	
-	   /*
-	   if(testingSensors){
-		   sensorManager.registerListener(this,
-			        sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-			        SensorManager.SENSOR_DELAY_GAME);
-	   }
-	   */
-
 	    registerReceiver(receiver, new IntentFilter(TCPclientService.NOTIFICATION));
+	    
+	    Intent askstatus = new Intent(this,TCPclientService.class);
+	    askstatus.putExtra(TCPclientService.COMMAND, TCPclientService.GETSTATUS);
+	    startService(askstatus);
 	}
 
 	@Override
@@ -157,17 +130,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 		unregisterReceiver(receiver);
 		if(testingSensors)
 			sensorManager.unregisterListener(this);
-		/*
-		if(socket!=null){
-			if(isSending){
-				destroyWriterStream();
-				isSending = false;
-				sendData.setChecked(false);
-				
-			}
-			disconnect();
-			
-		}*/
 	    
 	}
 	
@@ -245,19 +207,14 @@ public class MainActivity extends Activity implements SensorEventListener{
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
 	}
 
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		// TODO Auto-generated method stub
-		
 	}
 	
-	
-	// TODO: arreglar bug raro con el timestamp y el dt que es siempre nulo! 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		
@@ -269,15 +226,24 @@ public class MainActivity extends Activity implements SensorEventListener{
 			timestampGyro = event.timestamp;
 
 			showGyroValues(event.values,dT);
-			
-//			if(isSending){
-//				String str = "G:"+code+":"+dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2]+";";
-//				code++;
-//				writer.println(str);
-//				writer.flush();
-//			}
-			
 		}	
+	}
+	
+	private void enableUIbuttons(boolean isConnected){
+		if(isConnected){
+			connectLocal.setEnabled(false);
+			connectRemote.setEnabled(false);
+			startDraw.setEnabled(true);
+			disconnect.setEnabled(true);
+			testSensors.setEnabled(false);
+		}
+		else{
+			connectLocal.setEnabled(true);
+			connectRemote.setEnabled(true);
+			startDraw.setEnabled(false);
+			disconnect.setEnabled(false);
+			testSensors.setEnabled(true);	
+		}
 	}
 	
 	private void showGyroValues(float[] values, float dT){
@@ -295,4 +261,6 @@ public class MainActivity extends Activity implements SensorEventListener{
 							"timeGyro:\t"+String.format("%.4f", dT);
 		gyroSensorValues.setText(gyroString);	
 	}
+
+
 }

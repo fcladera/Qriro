@@ -31,16 +31,20 @@ public class TCPclientService extends Service {
 	public static final String COMMAND = "command";
 	public static final String SERVER = "server";
 	public static final String PORT = "port";
-	public static final int CONNECT = 1;
-	public static final int DISCONNECT = 0;
-	public static final int SENDMSG = 10;
 	public static final String MSG  = "msg";
 	public static final String ORIGIN = "origin";
 	
+	// commands that can be sent to TCPclientService 
+	// through Intent.putExtra(TCPclientService.COMMAND, ...)
+	public static final int CONNECT = 1;
+	public static final int DISCONNECT = 0;
+	public static final int GETSTATUS = 2;
+	public static final int SENDMSG = 10;
+	
+	// Status response
 	public static final String STATUS = "status"; 
 	public static final int CONNECTED = 1;
 	public static final int DISCONNECTED = 0; 
-	public static final int GETSTATUS = 3;
 
 	
 	private Socket socket;
@@ -91,29 +95,18 @@ public class TCPclientService extends Service {
 	    		writer.println(line);
 	    		writer.flush();
 	    		return;
+	    		
+	    	case GETSTATUS:
+	    		Intent intent = new Intent(NOTIFICATION);
+	    		if(isConnected)
+	    			intent.putExtra(STATUS, CONNECTED);
+	    		else
+	    			intent.putExtra(STATUS, DISCONNECTED);
+	    		sendBroadcast(intent);
 	    	default:
 	    		break;
 	    	
 	    	}
-	    		    	
-	    	
-//	    	long endTime = System.currentTimeMillis() + 2*1000;
-//	    	while (System.currentTimeMillis() < endTime) {
-//	    		synchronized (this) {
-//	    			try {
-//	    				wait(endTime - System.currentTimeMillis());
-//	    				Log.w("ServiceHandler",""+msg.arg1);
-//	    				Log.w("ServiceHandler",""+msg.getData().getString("Test"));
-//	    			} catch (Exception e) {
-//	    			}
-//		      }
-//	    	}
-	    	
-	    	
-			
-			
-			
-			//stopSelf(msg.arg1);
 	    }
 	}
 
@@ -153,14 +146,6 @@ public class TCPclientService extends Service {
 			if(isConnected){
 				Toast.makeText(getApplicationContext(), "Successfully connected to "+result, Toast.LENGTH_SHORT).show();
 				createWriterStream();
-				//if(result==localServer){
-					//connectRemote.setEnabled(false);
-			//	}
-				//else{
-					
-					//connectLocal.setEnabled(false);
-			//	}
-				//sendData.setEnabled(true);
 			}
 			else{
 				Toast.makeText(getApplicationContext(), "Error connecting to "+result, Toast.LENGTH_SHORT).show();
@@ -195,9 +180,6 @@ public class TCPclientService extends Service {
 			stopSelf();
 			//e.printStackTrace();
 		}
-		//sendData.setEnabled(false);
-		//connectRemote.setEnabled(true);
-		//connectLocal.setEnabled(true);
 		isConnected = false;
 		socket = null;
 		Intent intent = new Intent(NOTIFICATION);
@@ -218,8 +200,7 @@ public class TCPclientService extends Service {
 	
 	@Override
 	public IBinder onBind(Intent intent) {
-		// TODO: Return the communication channel to the service.
-		throw new UnsupportedOperationException("Not yet implemented");
+		throw new UnsupportedOperationException("Not implemented");
 	}
 	
 	 @Override
