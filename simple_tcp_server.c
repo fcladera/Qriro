@@ -125,10 +125,8 @@ int main(int argc, char **argv){
 		if (logfile==NULL) perror(__FILE__);
 	}
 
-	// Accelerometer vectors (acceleration, velocity, position)
-	//double x_accel[SIZE_VALUES], y_accel[SIZE_VALUES], z_accel[SIZE_VALUES];
+	// Screen vectors (velocity)
 	double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
-	//double x_pos[SIZE_VALUES], y_pos[SIZE_VALUES], z_pos[SIZE_VALUES];
 
 	// Gyro vectors (rotational velocity)
 	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
@@ -147,9 +145,17 @@ int main(int argc, char **argv){
 	gsl_matrix *RxRy = gsl_matrix_calloc(3,3);
 	gsl_matrix *instantaneous_rotation = gsl_matrix_calloc(3,3);
 
+	// Screen, integration
+	double screen_x = 0;
+	double screen_y = 0;
+	double screen_z = 0;
+
 	// Time variables, useful to get system time
 	struct timespec spec;
 	double startTime, endTime;
+
+
+
 
 	for(;;){
 		//Each time the client connects, the buffers are clean
@@ -291,12 +297,14 @@ int main(int argc, char **argv){
 									1.0, previous_rotation,instantaneous_rotation,
 									0.0, rot_matrix);
 						gsl_matrix_memcpy(previous_rotation,rot_matrix);
-						//printMatrix(rot_matrix);
+						printMatrix(rot_matrix);
 
 						//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
 						//fflush(gp_gyro);
 						//fprintf(gp_latency,"%lf\n",timeValue);
 						//fflush(gp_latency);
+
+
 					}
 
 				}
@@ -305,8 +313,16 @@ int main(int argc, char **argv){
 					loadfifoMooving(values[0],x_vel,SIZE_VALUES);
 					loadfifoMooving(values[1],y_vel,SIZE_VALUES);
 					loadfifoMooving(values[2],z_vel,SIZE_VALUES);
-					fprintf(gp_accel, "%lf\t%lf\t%lf\n",values[0],values[1],values[2]);
+
+					screen_x = values[0]+screen_x;
+					screen_y = values[1]+screen_y;
+					screen_z = values[2]+screen_z;
+
+
+					fprintf(gp_accel, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
 					fflush(gp_accel);
+
+
 
 				}
 				else{
