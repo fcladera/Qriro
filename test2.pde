@@ -3,9 +3,9 @@ import processing.net.*;
 
 Client myClient;
 Cube cube;
-int dataIn;
+String dataIn;
 
-boolean connectionAvailable = false;
+boolean connectionAvailable = true;
 
 void setup() {
   // OPENGL or P3D mode requires the use of beginRaw() and endRaw() instead of beginRecord() and endRecord().
@@ -19,15 +19,54 @@ void setup() {
 
 
 void draw() {
-  if(connectionAvailable){
-    if (myClient.available() > 0) { 
-      dataIn = myClient.read(); 
-      background(dataIn); 
-      //myClient.write("OK");
-    }
-  }
   background(255);
   cube.drawCube();
+}
+
+void clientEvent(Client myClient){
+  dataIn = myClient.readStringUntil('\n'); 
+  if(dataIn!=null){
+    println(dataIn);
+    String[] list = splitTokens(dataIn,":;");
+    //print(char(list[0]));
+    if(list[0].equals("S")){
+       println("Processing position");
+      int i=0;
+      for(String str : list){
+        print(str+"\n");
+        switch(i){
+          case 2:
+           cube.setX(float(str));
+           break;
+          case 3:
+            cube.setY(float(str));
+            break;
+          case 4:
+            cube.setZ(float(str));
+        }
+        i++; 
+      }       
+    }
+    if(list[0].equals("G")){
+      println("Processing angle");
+      int i=0;
+      for(String str : list){
+        print(str+"\n");
+        switch(i){
+          case 2:
+           cube.setAlpha(float(str));
+           break;
+          case 3:
+            cube.setBeta(float(str));
+            break;
+          case 4:
+            cube.setGamma(float(str));
+        }
+        i++; 
+      }       
+    }
+  }
+  //myClient.write("OK");
 }
 
 class Cube{
@@ -41,10 +80,35 @@ class Cube{
   float x_pos = 0;
   float y_pos = 0;
   float z_pos = 100;
-  final float positionChangeConstant = 10;
-  final float angleChangeConstant = 0.05;
+  private final static float positionChangeConstant = 10;
+  private final static float angleChangeConstant = 0.02*PI;
   
 
+  void setX(float value){
+   x_pos =  value;
+  }
+  
+  void setY(float value){
+   y_pos =  value;
+  }
+  
+  void setZ(float value){
+   z_pos = value; 
+   if(z_pos > maxZ) z_pos = maxZ;
+   else if(z_pos < minZ) z_pos = minZ;
+  }
+  
+  void setAlpha(float value){
+    alpha = value;
+  }
+  
+  void setBeta(float value){
+    beta = value;
+  }
+  
+  void setGamma(float value){
+   gamma = value; 
+  }
   
   void increaseX(){
     x_pos += positionChangeConstant;
@@ -87,6 +151,7 @@ class Cube{
     rotateX(alpha);
     rotateY(beta);
     rotateZ(gamma);
+    // usar scale en vez de el tamaño
     box(z_pos);
   }
 }
