@@ -53,50 +53,89 @@
  */
 int main(int argc, char **argv){
 
+	//=======================================================================
+	// Socket creation and listening
 
-	//---- check command line arguments ----
-	if(argc!=2){
-		fprintf(stderr,"usage: %s port\n",argv[0]);
-		exit(1);
-	}
-
-	//---- extract local port number ----
-	int portNumber;
-	if(sscanf(argv[1],"%d",&portNumber)!=1){
-		fprintf(stderr,"invalid port %s\n",argv[1]);
+	// check arguments
+	if(argc != 3){
+		fprintf(stderr,"Please use: %s portAndroid portApplication\n",argv[0]);
 		exit(1);
 	}
 
-	//---- create listen socket ----
-	int listenSocket=socket(PF_INET,SOCK_STREAM,0);
-	if(listenSocket==-1){
-		perror("socket");
+	// Get port numbers
+	int portAndroid, portApplication;
+	if(sscanf(argv[1],"%d",&portAndroid)!=1){
+		fprintf(stderr,"portAndroid should be a number!: %s\n",argv[1]);
 		exit(1);
 	}
-	// timewait problems
-	int on=1;
-	if(setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
-		perror("setsockopt");
+	if(sscanf(argv[1],"%d",&portApplication)!=1){
+			fprintf(stderr,"portApplication should be a number!: %s\n",argv[1]);
+			exit(1);
+	}
+
+	// Listen socket for Android
+	int listenSocketAndroid = socket(PF_INET,SOCK_STREAM,0);
+	if(listenSocketAndroid==-1){
+		perror("socketAndroid");
 		exit(1);
 	}
+
+	// Listen socket for the Application
+	int listenSocketApplication = socket(PF_INET,SOCK_STREAM,0);
+	if(listenSocketApplication==-1){
+		perror("socketApplication");
+		exit(1);
+	}
+
+	// Avoid problems if the program is quickly restarted
+	// http://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t
+	const int on=1;
+	if(setsockopt(listenSocketAndroid,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
+		perror("setsockoptAndroid");
+		exit(1);
+	}
+	if(setsockopt(listenSocketApplication,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
+		perror("setsockoptApplication");
+		exit(1);
+	}
+
+
 	// bound to any local address on the specified port
-	struct sockaddr_in myAddr;
-	myAddr.sin_family=AF_INET;
-	myAddr.sin_port=htons(portNumber);
-	myAddr.sin_addr.s_addr=htonl(INADDR_ANY);
-	if(bind(listenSocket,(struct sockaddr *)&myAddr,sizeof(myAddr))==-1){
-		perror("bind");
+	struct sockaddr_in myAddrAndroid;
+	myAddrAndroid.sin_family=AF_INET;
+	myAddrAndroid.sin_port=htons(portAndroid);
+	myAddrAndroid.sin_addr.s_addr=htonl(INADDR_ANY);
+	if(bind(listenSocketAndroid,(struct sockaddr *)&myAddrAndroid,sizeof(myAddrAndroid))==-1){
+		perror("bindAndroid");
 		exit(1);
 
 	}
-	// listening connections
-	if(listen(listenSocket,10)==-1){
-		perror("listen");
+	struct sockaddr_in myAddrApplication;
+	myAddrApplication.sin_family=AF_INET;
+	myAddrApplication.sin_port=htons(portApplication);
+	myAddrApplication.sin_addr.s_addr=htonl(INADDR_ANY);
+	if(bind(listenSocketApplication,(struct sockaddr *)&myAddrApplication,sizeof(myAddrApplication))==-1){
+		perror("bindApplication");
+		exit(1);
+
+	}
+
+	// Accepts connections on both sockets
+	if(listen(listenSocketAndroid,10)==-1){
+		perror("listenAndroid");
 		exit(1);
 	}
 
-  // Gnuplot pipe
-  /* Create a FIFO we later use for communication gnuplot => our program. */
+	if(listen(listenSocketApplication,10)==-1){
+			perror("listenApplication");
+			exit(1);
+	}
+
+
+	//=======================================================================
+	// Gnuplot (feedplot) pipe
+
+	/* Create a FIFO we later use for communication gnuplot => our program. */
 	FILE  *gp_accel,  *gp_gyro, *gp_latency;
 	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'value' --xlabel sample > /dev/null";
 	if (NULL == (gp_accel = popen(command,"w"))) {
@@ -117,7 +156,9 @@ int main(int argc, char **argv){
 
 	printf("Connected to gnuplot.\n");
 
-	// Log file
+	//=======================================================================
+	// Log file (useful to store values from sensors in a file to analyze them later)
+
 	FILE *logfile = NULL;
 	if(LOG_TO_FILE){
 		fprintf(stderr,"WARNING: Log enabled!\nThe values will be stored in points.dat\n");
@@ -125,11 +166,23 @@ int main(int argc, char **argv){
 		if (logfile==NULL) perror(__FILE__);
 	}
 
+	//=======================================================================
+	// Program Variables
+
 	// Screen vectors (velocity)
-	double x_vel[SIZE_VALUES], y_vel[SIZE_VALUES], z_vel[SIZE_VALUES];
+	double 	x_vel[SIZE_VALUES],
+			y_vel[SIZE_VALUES],
+			z_vel[SIZE_VALUES];
+
+	// Screen, integration
+	double 	screen_x = 0,
+			screen_y = 0,
+			screen_z = 0;
 
 	// Gyro vectors (rotational velocity)
-	double alpha_vel[SIZE_VALUES], beta_vel[SIZE_VALUES], gamma_vel[SIZE_VALUES];
+	double 	alpha_vel[SIZE_VALUES],
+			beta_vel[SIZE_VALUES],
+			gamma_vel[SIZE_VALUES];
 
 	// rotational velocity, constant component
 	double 	alpha_vel_st=NAN,
@@ -137,28 +190,25 @@ int main(int argc, char **argv){
 			gamma_vel_st=NAN;
 
 	// Rotation matrices
-	gsl_matrix *Rx = gsl_matrix_calloc(3,3);
-	gsl_matrix *Ry = gsl_matrix_calloc(3,3);
-	gsl_matrix *Rz = gsl_matrix_calloc(3,3);
-	gsl_matrix *rot_matrix = gsl_matrix_calloc(3,3);
-	gsl_matrix *previous_rotation = gsl_matrix_calloc(3,3);
-	gsl_matrix *RxRy = gsl_matrix_calloc(3,3);
-	gsl_matrix *instantaneous_rotation = gsl_matrix_calloc(3,3);
+	gsl_matrix 	*Rx = gsl_matrix_calloc(3,3),
+				*Ry = gsl_matrix_calloc(3,3),
+				*Rz = gsl_matrix_calloc(3,3),
+				*rot_matrix = gsl_matrix_calloc(3,3),
+				*previous_rotation = gsl_matrix_calloc(3,3),
+				*RxRy = gsl_matrix_calloc(3,3),
+				*instantaneous_rotation = gsl_matrix_calloc(3,3);
 
-	// Screen, integration
-	double screen_x = 0;
-	double screen_y = 0;
-	double screen_z = 0;
+
 
 	// Time variables, useful to get system time
 	struct timespec spec;
-	double startTime, endTime;
-
-
+	double 	startTime,
+			endTime;
 
 
 	for(;;){
-		//Each time the client connects, the buffers are clean
+
+		//Each time the client connects, the buffers are cleaned
 		clearfifo(alpha_vel,SIZE_VALUES);
 		clearfifo(beta_vel,SIZE_VALUES);
 		clearfifo(gamma_vel,SIZE_VALUES);
@@ -166,16 +216,16 @@ int main(int argc, char **argv){
 		beta_vel_st=NAN,
 		gamma_vel_st=NAN;
 
-		//---- accept new connection ----
-		struct sockaddr_in fromAddr;
-		socklen_t len=sizeof(fromAddr);
-		int dialogSocket=accept(listenSocket,(struct sockaddr *)&fromAddr,&len);
+		// accept a new Android connection
+		struct sockaddr_in fromAddrAndroid;
+		socklen_t len=sizeof(fromAddrAndroid);
+		int dialogSocket=accept(listenSocketAndroid,(struct sockaddr *)&fromAddrAndroid,&len);
 		if(dialogSocket==-1){
 		  perror("accept");
 		  exit(1);
 		}
 		printf("new connection from %s:%d\n",
-		  inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port));
+		  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
 		gsl_matrix_set_identity(previous_rotation);
 
@@ -211,7 +261,7 @@ int main(int argc, char **argv){
 			buffer[nb]='\0';
 
 			printf("from %s %d : %d bytes:\n%s\n",
-				inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+				inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
 
 			char * sliding_pointer = buffer;
 			while (*sliding_pointer!='\0') {
@@ -222,19 +272,19 @@ int main(int argc, char **argv){
 
 				if((*sliding_pointer!='G')&&(*sliding_pointer!='S')){
 					fprintf(stderr,"ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
-							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+							inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
 				if( sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",&sensorType,&frameID,&timeValue,values,values+1,values+2) != 6){
 					fprintf(stderr,"Invalid line format?: from %s %d : %d bytes:\n%s\n",
-							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+							inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
 				if((values[0]==NAN)||(values[1]==NAN)||(values[2]==NAN)){
 					fprintf(stderr,"NAN numbers found: from %s %d : %d bytes:\n%s\n",
-							inet_ntoa(fromAddr.sin_addr),ntohs(fromAddr.sin_port),nb,buffer);
+							inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
 					exit(EXIT_FAILURE);
 				}
 
@@ -358,7 +408,7 @@ int main(int argc, char **argv){
 
 
   //---- close listen socket ----
-  close(listenSocket);
+  close(listenSocketAndroid);
 
   //----close gnuplot-----
   pclose(gp_accel);
@@ -380,6 +430,33 @@ int main(int argc, char **argv){
   return 0;
 }
 
+void * processingThread(void * arg){
+	pthread_detach(pthread_self());
+	int socket =*(int) arg;
+	free(arg);
+	for(;;){
+		// Get ask msg from the client
+		char buffer[SIZE_VALUES];
+		int nb=recv(socket,buffer,SIZE_VALUES,0);
+		if(nb<=0){
+			break;
+		}
+		buffer[nb]='\0';
+		printf("%s\n",buffer);
+
+		// Send matrix to client
+		nb=sprintf(buffer,"%d bytes received\n",nb);
+		if(send(socket,buffer,nb,0)==-1){
+			perror("sendThread");
+			exit(1);
+		}
+	}
+
+	//---- close dialog socket ----
+	printf("client disconnected\n");
+	close(socket);
+	return (void *)0;
+}
 
 double toDegrees(double radians){
 	return (radians*180./M_PI);
