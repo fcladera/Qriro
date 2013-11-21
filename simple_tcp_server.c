@@ -81,6 +81,7 @@ void * processingThread(void * arg){
 		if(strncmp(buffer,"VALS",4)==0){
 			// Send rotationAndTranslation matrix to the client. Only the useful data!
 			if(rotationAndTranslation!=NULL){
+				//printf("matrix asked");
 				nb = sprintf(buffer,"MAT:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g;\n",
 							gsl_matrix_get(rotationAndTranslation,0,0),
 							gsl_matrix_get(rotationAndTranslation,0,1),
@@ -112,8 +113,8 @@ void * processingThread(void * arg){
 		}
 	}
 
-	//---- close dialog socket ----
-	printf("client disconnected\n");
+	//close dialog socket
+	printf("Application disconnected\n");
 	close(socket);
 	return (void *)0;
 }
@@ -272,8 +273,10 @@ int main(int argc, char **argv){
 	double 	startTime,
 			endTime;
 
-	// Clear global matrix
+	// Clear global matrix qnd set some constant values
 	rotationAndTranslation = gsl_matrix_calloc(4,4);
+	gsl_matrix_set(rotationAndTranslation,3,3,1.0);
+	gsl_matrix_set(rotationAndTranslation,2,3,-200.0);
 
 
 	for(;;){
@@ -327,7 +330,7 @@ int main(int argc, char **argv){
 			  perror("accept");
 			  exit(1);
 			}
-			printf("new connection from %s:%d\n",
+			printf("Android connection %s:%d\n",
 			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
 			gsl_matrix_set_identity(previous_rotation);
@@ -450,7 +453,17 @@ int main(int argc, char **argv){
 										1.0, previous_rotation,instantaneous_rotation,
 										0.0, rot_matrix);
 							gsl_matrix_memcpy(previous_rotation,rot_matrix);
-							printMatrix(rot_matrix);
+							//printMatrix(rot_matrix);
+
+							gsl_matrix_set(rotationAndTranslation,0,0,gsl_matrix_get(rot_matrix,0,0));
+							gsl_matrix_set(rotationAndTranslation,0,1,gsl_matrix_get(rot_matrix,0,1));
+							gsl_matrix_set(rotationAndTranslation,0,2,gsl_matrix_get(rot_matrix,0,2));
+							gsl_matrix_set(rotationAndTranslation,1,0,gsl_matrix_get(rot_matrix,1,0));
+							gsl_matrix_set(rotationAndTranslation,1,1,gsl_matrix_get(rot_matrix,1,1));
+							gsl_matrix_set(rotationAndTranslation,1,2,gsl_matrix_get(rot_matrix,1,2));
+							gsl_matrix_set(rotationAndTranslation,2,0,gsl_matrix_get(rot_matrix,2,0));
+							gsl_matrix_set(rotationAndTranslation,2,1,gsl_matrix_get(rot_matrix,2,1));
+							gsl_matrix_set(rotationAndTranslation,2,2,gsl_matrix_get(rot_matrix,2,2));
 
 							//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
 							//fflush(gp_gyro);
