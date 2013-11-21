@@ -276,7 +276,6 @@ int main(int argc, char **argv){
 	// Clear global matrix qnd set some constant values
 	rotationAndTranslation = gsl_matrix_calloc(4,4);
 	gsl_matrix_set(rotationAndTranslation,3,3,1.0);
-	gsl_matrix_set(rotationAndTranslation,2,3,-200.0);
 
 
 	for(;;){
@@ -484,6 +483,10 @@ int main(int argc, char **argv){
 						screen_y = values[1]+screen_y;
 						screen_z = values[2]+screen_z;
 
+
+						gsl_matrix_set(rotationAndTranslation,0,3,screen_x);
+						gsl_matrix_set(rotationAndTranslation,1,3,screen_y);
+						gsl_matrix_set(rotationAndTranslation,2,3,screen_z);
 
 						fprintf(gp_accel, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
 						fflush(gp_accel);
