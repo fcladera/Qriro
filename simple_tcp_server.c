@@ -422,22 +422,27 @@ int main(int argc, char **argv){
 							double gamma_pos_delta = gamma_vel[0]*timeValue;
 
 							//Calculate rotation matrices
+							// Be aware that the axis from the telephone and the axis for the application are not
+							// the same!
+							// x_application => x_telephone
+							// y_application => -z_telephone
+							// z_application => y_telephone
 							gsl_matrix_set(Rx,0,0,1);
 							gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
-							gsl_matrix_set(Rx,1,2,-sin(alpha_pos_delta));
-							gsl_matrix_set(Rx,2,1,sin(alpha_pos_delta));
+							gsl_matrix_set(Rx,1,2,sin(alpha_pos_delta));
+							gsl_matrix_set(Rx,2,1,-sin(alpha_pos_delta));
 							gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
 
-							gsl_matrix_set(Ry,0,0,cos(beta_pos_delta));
-							gsl_matrix_set(Ry,0,2,sin(beta_pos_delta));
+							gsl_matrix_set(Ry,0,0,cos(gamma_pos_delta));
+							gsl_matrix_set(Ry,0,2,sin(gamma_pos_delta));
 							gsl_matrix_set(Ry,1,1,1);
-							gsl_matrix_set(Ry,2,0,-sin(beta_pos_delta));
-							gsl_matrix_set(Ry,2,2,cos(beta_pos_delta));
+							gsl_matrix_set(Ry,2,0,-sin(gamma_pos_delta));
+							gsl_matrix_set(Ry,2,2,cos(gamma_pos_delta));
 
-							gsl_matrix_set(Rz,0,0,cos(gamma_pos_delta));
-							gsl_matrix_set(Rz,0,1,-sin(gamma_pos_delta));
-							gsl_matrix_set(Rz,1,0,sin(gamma_pos_delta));
-							gsl_matrix_set(Rz,1,1,cos(gamma_pos_delta));
+							gsl_matrix_set(Rz,0,0,cos(beta_pos_delta));
+							gsl_matrix_set(Rz,0,1,-sin(beta_pos_delta));
+							gsl_matrix_set(Rz,1,0,sin(beta_pos_delta));
+							gsl_matrix_set(Rz,1,1,cos(beta_pos_delta));
 							gsl_matrix_set(Rz,2,2,1);
 
 							gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
