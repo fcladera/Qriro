@@ -42,6 +42,16 @@ void printfifo(double *fifo, unsigned int lenlista){
 	}
 }
 
+double FIRfilter(double *fifo,
+			double *coefficients,
+			unsigned int taps){
+	double filtered = 0;
+	for(unsigned int i=0;i<taps;i++){
+		filtered += coefficients[i]*fifo[i];
+	}
+	return filtered;
+}
+
 double sumfifo(double *fifo, unsigned int lenlista){
 	unsigned int i,j;
 	double result;

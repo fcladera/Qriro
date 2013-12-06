@@ -384,12 +384,16 @@ int main(int argc, char **argv){
 					if( sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",&sensorType,&frameID,&timeValue,values,values+1,values+2) != 6){
 						fprintf(stderr,"Invalid line format?: from %s %d : %d bytes:\n%s\n",
 								inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
+						close(dialogSocket);
+						close(listenSocketAndroid);
 						exit(EXIT_FAILURE);
 					}
 
 					if((values[0]==NAN)||(values[1]==NAN)||(values[2]==NAN)){
 						fprintf(stderr,"NAN numbers found: from %s %d : %d bytes:\n%s\n",
 								inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
+						close(dialogSocket);
+						close(listenSocketAndroid);
 						exit(EXIT_FAILURE);
 					}
 
@@ -412,14 +416,27 @@ int main(int argc, char **argv){
 						else{
 
 							// Store current angular velocity in a fifo
-							loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
-							loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
-							loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
+							//loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
+							//loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
+							//loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
+							loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+							loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+							loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+
+
+							double 	alpha_filtered,
+									beta_filtered,
+									gamma_filtered;
+
+							alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
+							beta_filtered = FIRfilter(beta_vel,firCoefs,32);
+							gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
+
 
 							// Integrate to calculate the instantaneous rotation
-							double alpha_pos_delta = alpha_vel[0]*timeValue;
-							double beta_pos_delta = beta_vel[0]*timeValue;
-							double gamma_pos_delta = gamma_vel[0]*timeValue;
+							double alpha_pos_delta = alpha_filtered*timeValue;
+							double beta_pos_delta = beta_filtered*timeValue;
+							double gamma_pos_delta = gamma_filtered*timeValue;
 
 							//Calculate rotation matrices
 							// Be aware that the axis from the telephone and the axis for the application are not
