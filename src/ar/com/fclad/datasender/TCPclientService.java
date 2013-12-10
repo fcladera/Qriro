@@ -52,7 +52,7 @@ public class TCPclientService extends Service {
 	private String server = null;
 	private int port = -1;
 	
-	private static final int timeout = 1000;
+	private static final int timeout = 2000;
 
 	private long code;
 	
@@ -90,8 +90,8 @@ public class TCPclientService extends Service {
 	    		String line = msg.getData().getString(ORIGIN)+":"+code+":";
 	    		line += msg.getData().getString(MSG)+";";
 	    		code++;
-	    		writer.println(line);
 	    		writer.flush();
+	    		writer.println(line);
 	    		return;
 	    		
 	    	case GETSTATUS:
@@ -121,8 +121,8 @@ public class TCPclientService extends Service {
 				InetSocketAddress serverAddr = new InetSocketAddress(params[0], port);
 				socket = new Socket();
 				try {
-					
 					socket.connect(serverAddr, timeout);
+					socket.setTcpNoDelay(true);
 					isConnected = true;
 					Intent intent = new Intent(NOTIFICATION); 
 					intent.putExtra(STATUS, CONNECTED);

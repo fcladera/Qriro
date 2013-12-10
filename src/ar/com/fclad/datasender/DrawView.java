@@ -9,6 +9,8 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
+// https://developer.android.com/training/gestures/detector.html
+
 public class DrawView extends View {
     
   private boolean isScaling;
@@ -17,11 +19,11 @@ public class DrawView extends View {
   private float oldX = 0;
   private float oldY = 0;
   private float oldScale = 0;
-  private static final float sensibilityFinger = 10;
+  private static final float sensibilityFinger = 5;
   
   private float scaledValue = 1.0f;
   private ScaleGestureDetector scaleGestureDetector;
-  private static final float sensibilityGesture = 0.05f;
+  private static final float sensibilityGesture = 0.01f;
   
   private Paint paint;
   private float circleRadius = 10f;
