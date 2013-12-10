@@ -87,11 +87,12 @@ public class DrawView extends View {
 			     line += ":"+0;
 			     //Log.w("DrawView",line);
 			     
-			     Intent msgIntent = new Intent(getContext(),TCPclientService.class);
-			     msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
-		    	 msgIntent.putExtra(TCPclientService.ORIGIN, "S");
-		    	 msgIntent.putExtra(TCPclientService.MSG,line);
-		    	 getContext().startService(msgIntent);
+			     //Intent msgIntent = new Intent(getContext(),TCPclientService.class);
+			     Intent bluetoothIntent = new Intent(getContext(),BluetoothServerService.class);
+			     bluetoothIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
+			     bluetoothIntent.putExtra(TCPclientService.ORIGIN, "S");
+			     bluetoothIntent.putExtra(TCPclientService.MSG,line);
+		    	 getContext().startService(bluetoothIntent);
 
 			      oldX = x;
 			      oldY = y;
@@ -124,7 +125,8 @@ public class DrawView extends View {
     	  
     	  String msg = "0:0:0:"+deltaScale*10;
     	  
-    	  Intent msgIntent = new Intent(getContext(), TCPclientService.class);
+    	  //Intent msgIntent = new Intent(getContext(), TCPclientService.class);
+    	  Intent msgIntent = new Intent(getContext(), BluetoothServerService.class);
     	  msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
     	  msgIntent.putExtra(TCPclientService.ORIGIN, "S");
     	  msgIntent.putExtra(TCPclientService.MSG,msg);

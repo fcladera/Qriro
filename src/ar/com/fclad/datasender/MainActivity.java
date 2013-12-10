@@ -6,6 +6,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +17,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 // Resources used to write this code:
@@ -30,6 +32,8 @@ import android.widget.ToggleButton;
 
 public class MainActivity extends Activity implements SensorEventListener{
 	
+	private static final String TAG = "MainActivity";
+	
 	private SensorManager sensorManager;
 	private boolean testingSensors;
 	private float timestampGyro;
@@ -42,16 +46,24 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private static final String remoteServer = "192.168.2.122";
 	private int port = 7777;
 	
+	// Intent codes
+	private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
+    private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
+    private static final int REQUEST_ENABLE_BT = 3;
 	
 	// UI elements
 	private ToggleButton testSensors;
 	private Button connectRemote;
 	private Button connectLocal;
-	private Button disconnect;
+	private Button connect_bluetooth;
+	private Button disconnect_tcp;
+	private Button disconnect_bluetooth;
 	private Button startDraw;
 	
 	private BroadcastReceiver receiver;
 
+	private BluetoothAdapter bluetoothAdapter;
+	private BluetoothServerService bluetoothServerService;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -77,12 +89,23 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 		connectLocal = (Button) findViewById(R.id.connect_Local);
 		connectRemote = (Button) findViewById(R.id.connect_Remote);
-		disconnect = (Button) findViewById(R.id.disconnect);
+		disconnect_tcp = (Button) findViewById(R.id.disconnect_tcp);
 		startDraw = (Button) findViewById(R.id.drawButton);
 		testSensors = (ToggleButton) findViewById(R.id.testSensors);
+		connect_bluetooth = (Button) findViewById(R.id.connect_Bluetooth);
+		disconnect_bluetooth = (Button) findViewById(R.id.diosconnect_Bluetooth);
 		
+		// BLUETOOTH
 		
-		// RECEIVER
+		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (bluetoothAdapter == null) {
+            Toast.makeText(this, "Bluetooth not available", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+		
+        // TCP connection
+        
 		receiver = new BroadcastReceiver() {
 			
 			@Override
@@ -107,12 +130,25 @@ public class MainActivity extends Activity implements SensorEventListener{
 		
 	}
 	
-	
+	@Override
+    public void onStart() {
+        super.onStart();
+        // If BT is not on, request that it be enabled.
+        // setupChat() will then be called during onActivityResult
+        if (!bluetoothAdapter.isEnabled()) {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        // Otherwise, setup the chat session
+        } else {
+            if (bluetoothServerService == null) enableBTservice();        
+        }
+    }
 	
 	@Override
 	  protected void onResume() {
 	    super.onResume();
 	    registerReceiver(receiver, new IntentFilter(TCPclientService.NOTIFICATION));
+	    registerReceiver(receiver, new IntentFilter(BluetoothServerService.NOTIFICATION));
 	    
 	    Intent askstatus = new Intent(this,TCPclientService.class);
 	    askstatus.putExtra(TCPclientService.COMMAND, TCPclientService.GETSTATUS);
@@ -128,6 +164,25 @@ public class MainActivity extends Activity implements SensorEventListener{
 		if(testingSensors)
 			sensorManager.unregisterListener(this);
 	    
+	}
+	
+	
+	public void onActivityResult(int reqCode, int resultCode, Intent data) {
+		switch (reqCode) {
+		case REQUEST_ENABLE_BT:
+			if(resultCode == Activity.RESULT_OK){
+				enableBTservice();
+			}
+			else{
+				Log.e(TAG, "Bluetooth enable request failed");
+	            Toast.makeText(this, "Error enabling bluetooth", Toast.LENGTH_LONG).show();
+	            finish();
+			}
+			break;
+
+		default:
+			break;
+		}
 	}
 	
 	public void onToggleClicked(View view){	
@@ -173,10 +228,33 @@ public class MainActivity extends Activity implements SensorEventListener{
 			}
 			return;
 			
-		case R.id.disconnect:
+		case R.id.connect_Bluetooth:
+			Log.d(TAG, "Bluetooth connection asked");
+			Intent bluetoothServiceIntent = new Intent(this,BluetoothServerService.class);
+			bluetoothServiceIntent.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.LISTEN);
+			startService(bluetoothServiceIntent);
+			enableUIbuttons(true);
+			return;
+		
+		case R.id.diosconnect_Bluetooth:
+			Log.d(TAG, "Bluetooth disconnect asked");
+			Intent disconnect_bluetooth = new Intent(this,BluetoothServerService.class);
+			disconnect_bluetooth.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.STOP_LISTEN);
+			startService(disconnect_bluetooth);
+			return;
+			
+		case R.id.disconnect_tcp:
 			Intent disconnect = new Intent(this, TCPclientService.class);
 			disconnect.putExtra(TCPclientService.COMMAND, TCPclientService.DISCONNECT);
 			startService(disconnect);
+			return;
+		case R.id.sendHello:
+			Log.d(TAG, "Sent Hello by BT");
+			Intent sendmsg = new Intent(this,BluetoothServerService.class);
+			sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
+			sendmsg.putExtra(BluetoothServerService.ORIGIN, "TST");
+			sendmsg.putExtra(BluetoothServerService.MSG, "Hello Bluetooth!\n");
+			startService(sendmsg);
 			return;
 		case R.id.drawButton:
 			Intent intent = new Intent(MainActivity.this, DrawActivity.class);
@@ -215,16 +293,20 @@ public class MainActivity extends Activity implements SensorEventListener{
 			connectLocal.setEnabled(false);
 			connectRemote.setEnabled(false);
 			startDraw.setEnabled(true);
-			disconnect.setEnabled(true);
+			disconnect_tcp.setEnabled(true);
 			testSensors.setEnabled(false);
 		}
 		else{
 			connectLocal.setEnabled(true);
 			connectRemote.setEnabled(true);
 			startDraw.setEnabled(false);
-			disconnect.setEnabled(false);
+			disconnect_tcp.setEnabled(false);
 			testSensors.setEnabled(true);	
 		}
+	}
+	
+	private void enableBTservice(){
+		
 	}
 	
 	private void showGyroValues(float[] values, float dT){

@@ -32,27 +32,46 @@
                    android:onClick="onToggleClicked"
                    />
 
-               <Button
-                   android:id="@+id/connect_Remote"
+               <LinearLayout
                    android:layout_width="match_parent"
-                   android:layout_height="wrap_content"
-                   android:text="@string/connect_remote"
-                   android:onClick="onClick" />
+                   android:layout_height="wrap_content" >
+
+                   <Button
+                       android:id="@+id/connect_Local"
+                       android:layout_width="165dp"
+                       android:layout_height="wrap_content"
+                       android:onClick="onClick"
+                       android:text="@string/connect_local" />
+
+                   <Button
+                       android:id="@+id/connect_Remote"
+                       android:layout_width="match_parent"
+                       android:layout_height="wrap_content"
+                       android:onClick="onClick"
+                       android:text="@string/connect_remote" />
+
+               </LinearLayout>
 
                <Button
-                   android:id="@+id/connect_Local"
-                   android:layout_width="fill_parent"
-                   android:layout_height="wrap_content"
-                   android:text="@string/connect_local" 
-                   android:onClick="onClick"/>
-
-               <Button
-                   android:id="@+id/disconnect"
+                   android:id="@+id/disconnect_tcp"
                    android:layout_width="match_parent"
                    android:layout_height="wrap_content"
-                   android:text="@string/disconnect"
                    android:enabled="false"
-                   android:onClick="onClick" />
+                   android:onClick="onClick"
+                   android:text="@string/disconnect_tcp" />
+
+               <Button
+                   android:id="@+id/connect_Bluetooth"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:text="@string/connect_bluetooth" 
+                   android:onClick="onClick"/>
+                <Button
+                   android:id="@+id/diosconnect_Bluetooth"
+                   android:layout_width="match_parent"
+                   android:layout_height="wrap_content"
+                   android:text="@string/disconnect_bluetooth" 
+                   android:onClick="onClick"/>
 
                <Button
                    android:id="@+id/drawButton"
@@ -62,8 +81,12 @@
                    android:enabled="false"
                    android:onClick="onClick"/>
 
-
-               
+               <Button
+                   android:id="@+id/sendHello"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:text="Send Hello BT" 
+                   android:onClick="onClick"/>
 
                <TextView
                    android:id="@+id/GyroSensorValue"

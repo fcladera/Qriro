@@ -20,7 +20,7 @@ public class DrawActivity extends Activity implements SensorEventListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(new DrawView(this));
-		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);;
+		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		
 	}
 	
@@ -52,10 +52,10 @@ public class DrawActivity extends Activity implements SensorEventListener {
 			timestampGyro = event.timestamp;
 
 			String str = dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2];
-			Intent sendmsg = new Intent(this,TCPclientService.class);
-			sendmsg.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
-			sendmsg.putExtra(TCPclientService.ORIGIN, "G");
-			sendmsg.putExtra(TCPclientService.MSG, str);
+			Intent sendmsg = new Intent(this,BluetoothServerService.class);
+			sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
+			sendmsg.putExtra(BluetoothServerService.ORIGIN, "G");
+			sendmsg.putExtra(BluetoothServerService.MSG, str);
 			startService(sendmsg);
 			
 		}	
