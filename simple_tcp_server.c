@@ -496,14 +496,16 @@ int main(int argc, char **argv){
 
 					}
 					else if(sensorType=='S'){
+						const float xy_scale=0.2;
+						const float z_scale=3;
 
-						loadfifoMooving(values[0],x_vel,SIZE_VALUES);
-						loadfifoMooving(values[1],y_vel,SIZE_VALUES);
-						loadfifoMooving(values[2],z_vel,SIZE_VALUES);
+						loadfifoMooving(values[0]*xy_scale,x_vel,SIZE_VALUES);
+						loadfifoMooving(values[1]*xy_scale,y_vel,SIZE_VALUES);
+						loadfifoMooving(values[2]*z_scale,z_vel,SIZE_VALUES);
 
-						screen_x = values[0]+screen_x;
-						screen_y = values[1]+screen_y;
-						screen_z = values[2]+screen_z;
+						screen_x = xy_scale*values[0]+screen_x;
+						screen_y = xy_scale*values[1]+screen_y;
+						screen_z = z_scale*values[2]+screen_z;
 
 
 						gsl_matrix_set(rotationAndTranslation,0,3,screen_x);
