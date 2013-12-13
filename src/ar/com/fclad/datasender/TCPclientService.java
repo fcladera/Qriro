@@ -6,7 +6,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-
 import android.app.Service;
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -54,7 +53,7 @@ public class TCPclientService extends Service {
 	
 	private static final int timeout = 2000;
 
-	private long code;
+	private long msgId;
 	
 	
 	public TCPclientService() {
@@ -87,9 +86,9 @@ public class TCPclientService extends Service {
 	    			
 	    		break;
 	    	case SENDMSG:
-	    		String line = msg.getData().getString(ORIGIN)+":"+code+":";
+	    		String line = msg.getData().getString(ORIGIN)+":"+msgId+":";
 	    		line += msg.getData().getString(MSG)+";";
-	    		code++;
+	    		msgId++;
 	    		writer.flush();
 	    		writer.println(line);
 	    		return;

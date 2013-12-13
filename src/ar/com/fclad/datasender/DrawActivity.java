@@ -49,14 +49,22 @@ public class DrawActivity extends Activity implements SensorEventListener {
 			if(timestampGyro!=0){
 				dT = (event.timestamp-timestampGyro)*NS2S;
 			}
-			timestampGyro = event.timestamp;
-
-			String str = dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2];
-			Intent sendmsg = new Intent(this,BluetoothServerService.class);
-			sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
-			sendmsg.putExtra(BluetoothServerService.ORIGIN, "G");
-			sendmsg.putExtra(BluetoothServerService.MSG, str);
-			startService(sendmsg);
+			else{
+				timestampGyro = event.timestamp;
+				return;
+			}
+			if(dT!=0){	// Fixes bug in android, timestamp constant
+			
+				timestampGyro = event.timestamp;
+	
+				String str = dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2];
+				Intent sendmsg = new Intent(this,BluetoothServerService.class);
+				sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
+				sendmsg.putExtra(BluetoothServerService.ORIGIN, "G");
+				sendmsg.putExtra(BluetoothServerService.MSG, str);
+				startService(sendmsg);
+			}
+			
 			
 		}	
 		

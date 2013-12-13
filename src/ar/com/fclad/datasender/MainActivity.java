@@ -1,5 +1,7 @@
 package ar.com.fclad.datasender;
 
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -56,6 +58,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private Button connectRemote;
 	private Button connectLocal;
 	private Button connect_bluetooth;
+	private Drawable connectBluetoothBackground;
 	private Button disconnect_tcp;
 	private Button disconnect_bluetooth;
 	private Button startDraw;
@@ -94,6 +97,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		testSensors = (ToggleButton) findViewById(R.id.testSensors);
 		connect_bluetooth = (Button) findViewById(R.id.connect_Bluetooth);
 		disconnect_bluetooth = (Button) findViewById(R.id.diosconnect_Bluetooth);
+		connectBluetoothBackground = connect_bluetooth.getBackground();
 		
 		// BLUETOOTH
 		
@@ -104,7 +108,7 @@ public class MainActivity extends Activity implements SensorEventListener{
             return;
         }
 		
-        // TCP connection
+        // Message manage
         
 		receiver = new BroadcastReceiver() {
 			
@@ -114,15 +118,40 @@ public class MainActivity extends Activity implements SensorEventListener{
 				if(bundle!=null){
 					switch(bundle.getInt(TCPclientService.STATUS)){
 					case TCPclientService.CONNECTED:
-						Log.d("MainActivity", "Service said connected");
+						Log.d(TAG, "Tcp service said connected");
 						enableUIbuttons(true);
 						return;
 					
 					case TCPclientService.DISCONNECT:
-						Log.d("MainActivity", "Service said disconnected");
+						Log.d(TAG, "Tcp service said disconnected");
 						enableUIbuttons(false);
 						return;
-					}
+					
+					case BluetoothServerService.STATE_CONNECTED:
+						Log.d(TAG, "Bluetooth service said connected");
+						connect_bluetooth.setBackgroundColor(Color.GREEN);
+						enableUIbuttons(true);
+						return;
+					case BluetoothServerService.STATE_CONNECTING:
+						Log.d(TAG, "Bluetooth service said connecting");
+						connect_bluetooth.setBackgroundColor(Color.YELLOW);
+						enableUIbuttons(false);
+						return;
+						
+					case BluetoothServerService.STATE_LISTEN:
+						Log.d(TAG, "Bluetooth service said listen");
+						connect_bluetooth.setEnabled(false);
+						connect_bluetooth.setBackgroundColor(Color.RED);
+						enableUIbuttons(false);
+						return;
+						
+					case BluetoothServerService.STATE_NONE:
+						Log.d(TAG, "Bluetooth service said None");
+						connect_bluetooth.setBackground(connectBluetoothBackground);
+						connect_bluetooth.setEnabled(true);
+						enableUIbuttons(false);
+						return;
+					}	
 				}
 				
 			}
@@ -150,9 +179,15 @@ public class MainActivity extends Activity implements SensorEventListener{
 	    registerReceiver(receiver, new IntentFilter(TCPclientService.NOTIFICATION));
 	    registerReceiver(receiver, new IntentFilter(BluetoothServerService.NOTIFICATION));
 	    
-	    Intent askstatus = new Intent(this,TCPclientService.class);
-	    askstatus.putExtra(TCPclientService.COMMAND, TCPclientService.GETSTATUS);
-	    startService(askstatus);
+	    Intent askstatusTCP = new Intent(this,TCPclientService.class);
+	    askstatusTCP.putExtra(TCPclientService.COMMAND, TCPclientService.GETSTATUS);
+	    startService(askstatusTCP);
+	    
+	    Intent askstatusBT = new Intent(this,BluetoothServerService.class);
+	    askstatusBT.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.GETSTATUS);
+	    startService(askstatusBT);
+	    
+	    
 	}
 
 	@Override
@@ -188,7 +223,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onToggleClicked(View view){	
 		switch (view.getId()){
 		case R.id.testSensors:
-			Log.w("MainActivity","Toggled testSensor button");
+			Log.w(TAG,"Toggled testSensor button");
 			testingSensors = ((ToggleButton) view).isChecked();
 			if(testingSensors)
 			 sensorManager.registerListener(this,
@@ -203,7 +238,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	public void onClick(View view){
 		switch(view.getId()){
 		case R.id.connect_Remote:
-			Log.d("mainActivity", "Connection to remote asked");
+			Log.d(TAG, "Connection to remote asked");
 			Intent i = new Intent(this, TCPclientService.class);
 			i.putExtra(TCPclientService.COMMAND, TCPclientService.CONNECT);
 			i.putExtra(TCPclientService.PORT, port);
@@ -216,7 +251,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 			return;
 			
 		case R.id.connect_Local:
-			Log.d("mainActivity", "Connection to local");
+			Log.d(TAG, "Connection to local");
 			Intent serviceIntent = new Intent(this, TCPclientService.class);
 			serviceIntent.putExtra(TCPclientService.COMMAND, TCPclientService.CONNECT);
 			serviceIntent.putExtra(TCPclientService.SERVER, localServer);
@@ -233,7 +268,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 			Intent bluetoothServiceIntent = new Intent(this,BluetoothServerService.class);
 			bluetoothServiceIntent.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.LISTEN);
 			startService(bluetoothServiceIntent);
-			enableUIbuttons(true);
+			//enableUIbuttons(true);
 			return;
 		
 		case R.id.diosconnect_Bluetooth:
@@ -249,11 +284,11 @@ public class MainActivity extends Activity implements SensorEventListener{
 			startService(disconnect);
 			return;
 		case R.id.sendHello:
-			Log.d(TAG, "Sent Hello by BT");
+			Log.d(TAG, "Try to send Hello by BT");
 			Intent sendmsg = new Intent(this,BluetoothServerService.class);
 			sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
 			sendmsg.putExtra(BluetoothServerService.ORIGIN, "TST");
-			sendmsg.putExtra(BluetoothServerService.MSG, "Hello Bluetooth!\n");
+			sendmsg.putExtra(BluetoothServerService.MSG, "Hello Bluetooth!");
 			startService(sendmsg);
 			return;
 		case R.id.drawButton:

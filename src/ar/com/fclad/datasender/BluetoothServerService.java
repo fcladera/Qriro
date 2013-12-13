@@ -16,6 +16,11 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
+/* FIXME When connecting with rfcomm and then disconnecting. 
+ * Server stays connected!
+ */
+
+
 public class BluetoothServerService extends Service {
 	private Looper mServiceLooper;
 	private ServiceHandler mServiceHandler;
@@ -30,10 +35,10 @@ public class BluetoothServerService extends Service {
 
 	// Connection state
 	private int state = STATE_NONE;
-    public static final int STATE_NONE = 0;       // we're doing nothing
-    public static final int STATE_LISTEN = 1;     // now listening for incoming connections
-    public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
-    public static final int STATE_CONNECTED = 3;  // now connected to a remote device
+    public static final int STATE_NONE = 0xF+0;       // we're doing nothing
+    public static final int STATE_LISTEN = 0xF+1;     // now listening for incoming connections
+    public static final int STATE_CONNECTING = 0xF+2; // now initiating an outgoing connection
+    public static final int STATE_CONNECTED = 0xF+3;  // now connected to a remote device
 	
 	// commands that can be sent to BluetoothServerService 
 	public static final int LISTEN = 1;
@@ -56,7 +61,7 @@ public class BluetoothServerService extends Service {
     private BluetoothAdapter bluetoothAdapter;
     private AcceptThread acceptThread;
     private ConnectedThread connectedThread;
-    private long code;
+    private long msgId;
     
 	public BluetoothServerService() {
 		Log.d(TAG,"Constructor");
@@ -70,7 +75,8 @@ public class BluetoothServerService extends Service {
 	    }
 	    @Override
 	    public void handleMessage(Message msg) {
-	    	switch(msg.getData().getInt(COMMAND)){
+	    	int code = msg.getData().getInt(COMMAND);
+	    	switch(code){
 	    	
 	    	case LISTEN:
 	    		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -85,7 +91,6 @@ public class BluetoothServerService extends Service {
     			if(acceptThread == null){
     				acceptThread = new AcceptThread();
     				acceptThread.start();
-    				setState(STATE_LISTEN);
     			}
     			//Log.d(TAG, "Listening bluetooth socket");
 	    		break;
@@ -100,10 +105,10 @@ public class BluetoothServerService extends Service {
 	    			synchronized (this) {
 						r = connectedThread;
 					}
-	    			String line = msg.getData().getString(ORIGIN)+":"+code+":";
-		    		line += msg.getData().getString(MSG)+";";
+	    			String line = msg.getData().getString(ORIGIN)+":"+msgId+":";
+		    		line += msg.getData().getString(MSG)+";\n";
 		    		//Log.d(TAG,"Asked to send "+line);
-		    		code++;
+		    		msgId++;
 		    		r.write(line.getBytes());
 	    		}
 	    		else{
@@ -116,8 +121,9 @@ public class BluetoothServerService extends Service {
 	    		Intent intent = new Intent(NOTIFICATION);
 	    		intent.putExtra(STATUS, getState());
 	    		sendBroadcast(intent);
+	    		break;
 	    	default:
-	    		Log.w(TAG,"Erroneous code");
+	    		Log.w(TAG,"Erroneous code: "+code);
 	    		break;
 	    	
 	    	}
@@ -132,9 +138,20 @@ public class BluetoothServerService extends Service {
 		//mHandler.obtainMessage(BluetoothChat.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
 	}
 	
+	public synchronized int getState() {
+	    return state;
+	}
+	
+	public void notifyState(){
+		Intent intent = new Intent(NOTIFICATION); 
+		intent.putExtra(STATUS, getState());
+		sendBroadcast(intent);
+	}
+	
 	public synchronized void stopServer(){
 		Log.d(TAG, "Stopping bluetooth server");
 		setState(STATE_NONE);
+		notifyState();
 		if(connectedThread!=null)
 			connectedThread.cancel();
 		if(acceptThread!=null)
@@ -145,9 +162,7 @@ public class BluetoothServerService extends Service {
 	}
 
 	    
-	public synchronized int getState() {
-	    return state;
-	}
+	
 	
 	private class AcceptThread extends Thread{
 		private final BluetoothServerSocket bluetoothServerSocket;
@@ -157,7 +172,7 @@ public class BluetoothServerService extends Service {
 				tmp = bluetoothAdapter.listenUsingRfcommWithServiceRecord(NAME, MY_UUID);
 			} catch (IOException e) {
 				Log.e(TAG, "Error creating listen socket");
-				stopSelf();
+				stopServer();
 			}
 			bluetoothServerSocket = tmp;
 			Log.d(TAG,"Created ServerSocket");
@@ -165,6 +180,8 @@ public class BluetoothServerService extends Service {
 		
 		public void run(){
 			BluetoothSocket bluetoothSocket = null;
+			setState(STATE_LISTEN);
+			notifyState();
 			while (true) {
 				try {
 					bluetoothSocket = bluetoothServerSocket.accept();
@@ -179,6 +196,7 @@ public class BluetoothServerService extends Service {
 							case STATE_LISTEN:
 								try{
 									setState(STATE_CONNECTING);
+									notifyState();
 									connectedThread = new ConnectedThread(bluetoothSocket);
 									connectedThread.start();
 									Log.d(TAG,"Created connectedThread");
@@ -251,6 +269,7 @@ public class BluetoothServerService extends Service {
 			inputStream = tmpIn;
 			outputStream = tmpOut;
 			setState(STATE_CONNECTED);
+			notifyState();
 			Log.d(TAG,"Created Input/output streams");
 		}
 		
