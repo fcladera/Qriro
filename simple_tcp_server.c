@@ -21,6 +21,10 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_cblas.h>
@@ -34,7 +38,7 @@
 // Program parameters
 
 #define SIZE_VALUES 256
-#define SIZE_TCP_BUFFER 0x1000
+#define SIZE_BUFFER 0x1000
 
 #define LOG_TO_FILE 0
 #define MEASURE_EXECUTION_TIME 0
@@ -42,7 +46,7 @@
 //=======================================================================
 // Global variables
 gsl_matrix *rotationAndTranslation = NULL;	// matrix shared by the android server and the application server
-
+mode modeUsed;
 
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
@@ -62,91 +66,52 @@ gsl_matrix *rotationAndTranslation = NULL;	// matrix shared by the android serve
  * Read imu and ahrs algorithms
  */
 
-
-//
-
-
-void * processingThread(void * arg){
-	pthread_detach(pthread_self());
-	int socket =*(int *) arg;
-	free(arg);
-	for(;;){
-		// Get ask msg from the client
-		char buffer[SIZE_VALUES];
-		int nb=recv(socket,buffer,SIZE_VALUES,0);
-		if(nb<=0){
-			break;
-		}
-		buffer[nb]='\0';
-		if(strncmp(buffer,"VALS",4)==0){
-			// Send rotationAndTranslation matrix to the client. Only the useful data!
-			if(rotationAndTranslation!=NULL){
-				//printf("matrix asked");
-				nb = sprintf(buffer,"MAT:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g;\n",
-							gsl_matrix_get(rotationAndTranslation,0,0),
-							gsl_matrix_get(rotationAndTranslation,0,1),
-							gsl_matrix_get(rotationAndTranslation,0,2),
-							gsl_matrix_get(rotationAndTranslation,0,3),
-							gsl_matrix_get(rotationAndTranslation,1,0),
-							gsl_matrix_get(rotationAndTranslation,1,1),
-							gsl_matrix_get(rotationAndTranslation,1,2),
-							gsl_matrix_get(rotationAndTranslation,1,3),
-							gsl_matrix_get(rotationAndTranslation,2,0),
-							gsl_matrix_get(rotationAndTranslation,2,1),
-							gsl_matrix_get(rotationAndTranslation,2,2),
-							gsl_matrix_get(rotationAndTranslation,2,3),
-							gsl_matrix_get(rotationAndTranslation,3,0),
-							gsl_matrix_get(rotationAndTranslation,3,1),
-							gsl_matrix_get(rotationAndTranslation,3,2),
-							gsl_matrix_get(rotationAndTranslation,3,3));
-			}
-
-		}
-		else{
-			nb=sprintf(buffer,"Erroneous command \n");
-		}
-
-		// Send answer to client
-		if(send(socket,buffer,nb,0)==-1){
-			perror("sendThread");
-			exit(1);
-		}
-	}
-
-	//close dialog socket
-	printf("Application disconnected\n");
-	close(socket);
-	return (void *)0;
-}
-
 int main(int argc, char **argv){
 
 	//=======================================================================
-	// Socket creation and listening
+	// Connection variables
+	int portApplication;
+
+	// for TCP mode
+	int portAndroid;
+
+	//=======================================================================
+	// Determine connection mode with the phone (bluetooth, TCP), port (TCP) and address (BT)
 
 	// check arguments
-	if(argc != 3){
-		fprintf(stderr,"Please use: %s portAndroid portApplication\n",argv[0]);
-		exit(1);
+	if(argc!=4){
+		howToUse(argv);
 	}
 
-	// Get port numbers
-	int portAndroid, portApplication;
-	if(sscanf(argv[1],"%d",&portAndroid)!=1){
-		fprintf(stderr,"portAndroid should be a number!: %s\n",argv[1]);
-		exit(1);
-	}
-	if(sscanf(argv[2],"%d",&portApplication)!=1){
-			fprintf(stderr,"portApplication should be a number!: %s\n",argv[1]);
+	// Get portApplication number
+	if(sscanf(argv[3],"%d",&portApplication)!=1){
+			fprintf(stderr,"[TCPportApplication] should be a number!, got: %s\n",argv[3]);
 			exit(1);
 	}
 
-	// Listen socket for Android
-	int listenSocketAndroid = socket(PF_INET,SOCK_STREAM,0);
-	if(listenSocketAndroid==-1){
-		perror("socketAndroid");
-		exit(1);
+	if(strcmp(argv[1],"TCP")==0){
+		// TCP mode
+		printf("TCP mode chosen\n");
+		modeUsed = TCP;
+
+		// Get portAndroid number
+		if(sscanf(argv[2],"%d",&portAndroid)!=1){
+			fprintf(stderr,"[TCPportAndroid] should be a number!, got: %s\n",argv[2]);
+			exit(1);
+		}
 	}
+	else if(strcmp(argv[1],"BT")==0){
+		// BT mode
+		printf("BT mode chosen\n");
+		modeUsed = BLUETOOTH;
+
+	}
+	else{
+		howToUse(argv);
+	}
+
+	//=======================================================================
+	// Socket creation and listening
 
 	// Listen socket for the Application
 	int listenSocketApplication = socket(PF_INET,SOCK_STREAM,0);
@@ -158,47 +123,145 @@ int main(int argc, char **argv){
 	// Avoid problems if the program is quickly restarted
 	// http://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t
 	const int on=1;
-	if(setsockopt(listenSocketAndroid,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
-		perror("setsockoptAndroid");
-		exit(1);
-	}
 	if(setsockopt(listenSocketApplication,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
 		perror("setsockoptApplication");
 		exit(1);
 	}
 
-
 	// bound to any local address on the specified port
-	struct sockaddr_in myAddrAndroid;
-	myAddrAndroid.sin_family=AF_INET;
-	myAddrAndroid.sin_port=htons(portAndroid);
-	myAddrAndroid.sin_addr.s_addr=htonl(INADDR_ANY);
-	if(bind(listenSocketAndroid,(struct sockaddr *)&myAddrAndroid,sizeof(myAddrAndroid))==-1){
-		perror("bindAndroid");
-		exit(1);
-
-	}
 	struct sockaddr_in myAddrApplication;
-	myAddrApplication.sin_family=AF_INET;
-	myAddrApplication.sin_port=htons(portApplication);
-	myAddrApplication.sin_addr.s_addr=htonl(INADDR_ANY);
-	if(bind(listenSocketApplication,(struct sockaddr *)&myAddrApplication,sizeof(myAddrApplication))==-1){
-		perror("bindApplication");
-		exit(1);
+		myAddrApplication.sin_family=AF_INET;
+		myAddrApplication.sin_port=htons(portApplication);
+		myAddrApplication.sin_addr.s_addr=htonl(INADDR_ANY);
+		if(bind(listenSocketApplication,(struct sockaddr *)&myAddrApplication,sizeof(myAddrApplication))==-1){
+			perror("bindApplication");
+			exit(1);
 
 	}
 
-	// Accepts connections on both sockets
-	if(listen(listenSocketAndroid,10)==-1){
-		perror("listenAndroid");
-		exit(1);
-	}
-
+	// Accept connections
 	if(listen(listenSocketApplication,10)==-1){
 			perror("listenApplication");
 			exit(1);
 	}
 
+	//---TCP MODE------------------------------------------------------------
+	int listenSocketAndroid=-1;
+	if(modeUsed==TCP){	// Create TCP socket for the program
+		// Listen socket for Android
+		listenSocketAndroid = socket(PF_INET,SOCK_STREAM,0);
+		if(listenSocketAndroid==-1){
+			perror("socketAndroid");
+			exit(1);
+		}
+
+		// Avoid problems if the program is quickly restarted
+		const int on=1;
+		if(setsockopt(listenSocketAndroid,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
+			perror("setsockoptAndroid");
+			exit(1);
+		}
+
+		// bound to any local address on the specified port
+		struct sockaddr_in myAddrAndroid;
+		myAddrAndroid.sin_family=AF_INET;
+		myAddrAndroid.sin_port=htons(portAndroid);
+		myAddrAndroid.sin_addr.s_addr=htonl(INADDR_ANY);
+		if(bind(listenSocketAndroid,(struct sockaddr *)&myAddrAndroid,sizeof(myAddrAndroid))==-1){
+			perror("bindAndroid");
+			exit(1);
+
+		}
+
+		// Accepts connections
+		if(listen(listenSocketAndroid,10)==-1){
+			perror("listenAndroid");
+			exit(1);
+		}
+	}
+
+	//---BLUETOOTH MODE------------------------------------------------------
+	int socketBluetooth=-1;
+	if(modeUsed==BLUETOOTH){
+		// Get port number of the application with sdp
+		uint8_t svc_uuid_int[] = {	0x2f, 0xa7, 0xbe, 0xb1,
+									0x6a, 0xcf,
+									0x47, 0x03,
+									0x8b, 0x7e,
+									0xdc, 0xbc, 0x14, 0xf0, 0x7b, 0x89 };
+		int status;
+		bdaddr_t target;
+		uuid_t svc_uuid;
+		sdp_list_t *response_list, *search_list, *attrid_list;
+		sdp_session_t *session = 0;
+		uint32_t range = 0x0000ffff;
+		uint8_t port = 0;
+		str2ba( argv[2], &target );
+		// connect to the SDP server running on the remote machine
+		session = sdp_connect( BDADDR_ANY, &target, 0 );
+
+		sdp_uuid128_create( &svc_uuid, &svc_uuid_int );
+		search_list = sdp_list_append( 0, &svc_uuid );
+		attrid_list = sdp_list_append( 0, &range );
+
+		// get a list of service records that have the UUID svc_uuid_int
+		response_list = NULL;
+		status = sdp_service_search_attr_req( session, search_list,
+				SDP_ATTR_REQ_RANGE, attrid_list, &response_list);
+
+		if( status == 0 ) {
+			sdp_list_t *proto_list = NULL;
+			sdp_list_t *r = response_list;
+
+			// go through each of the service records
+			for (; r; r = r->next ) {
+				sdp_record_t *rec = (sdp_record_t*) r->data;
+
+				// get a list of the protocol sequences
+				if( sdp_get_access_protos( rec, &proto_list ) == 0 ) {
+
+					// get the RFCOMM port number
+					port = sdp_get_proto_port( proto_list, RFCOMM_UUID );
+					sdp_list_free( proto_list, 0 );
+				}
+				sdp_record_free( rec );
+			}
+		}
+		sdp_list_free( response_list, 0 );
+		sdp_list_free( search_list, 0 );
+		sdp_list_free( attrid_list, 0 );
+		sdp_close( session );
+
+		if( port != 0 ) {
+			printf("Service running on RFCOMM port %d\n", port);
+		}
+		else{
+			fprintf(stderr,"ERROR: RFCOMM application not found!\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// Create bluetooth socket
+		struct sockaddr_rc addr = {0};
+
+		// allocate a socket
+		socketBluetooth = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+		if(socketBluetooth==-1){
+			perror("socketBluetooth");
+			exit(EXIT_FAILURE);
+		}
+
+
+		// set the connection parameters
+		addr.rc_family = AF_BLUETOOTH;
+		addr.rc_channel = port;
+		str2ba( argv[2], &addr.rc_bdaddr );
+
+		// connect to server
+		if(connect(socketBluetooth, (struct sockaddr *)&addr, sizeof(addr)) == -1){
+			perror("Connection to BT phone");
+			exit(EXIT_FAILURE);
+		}
+}
 
 	//=======================================================================
 	// Gnuplot (feedplot) pipe
@@ -234,6 +297,98 @@ int main(int argc, char **argv){
 		if (logfile==NULL) perror(__FILE__);
 	}
 
+	// Clear global matrix qnd set some constant values
+	rotationAndTranslation = gsl_matrix_calloc(4,4);
+	gsl_matrix_set_identity(rotationAndTranslation);
+
+	for(;;){
+		fd_set rdSet;
+		FD_ZERO(&rdSet);
+		int maxFd = listenSocketApplication;
+		FD_SET(listenSocketApplication,&rdSet);
+
+		if(modeUsed==TCP){
+			FD_SET(listenSocketAndroid,&rdSet);
+			maxFd = maxFd>listenSocketAndroid? maxFd: listenSocketAndroid ;
+		}
+		if(modeUsed==BLUETOOTH){
+			FD_SET(socketBluetooth,&rdSet);
+			maxFd = maxFd>socketBluetooth? maxFd : socketBluetooth;
+		}
+
+		if(select(maxFd+1,&rdSet,(fd_set *)0,(fd_set *)0,(struct timeval *)0)==-1){
+			perror("select");
+			exit(1);
+		}
+		if(FD_ISSET(listenSocketApplication,&rdSet)){	// accept new connection from application
+			struct sockaddr_in fromAddrApplication;
+			socklen_t lenApplication = sizeof(fromAddrApplication);
+			int dialogSocketApplication=accept(listenSocketApplication,(struct sockaddr *)&fromAddrApplication,&lenApplication);
+			if(dialogSocketApplication==-1){
+				perror("AcceptApplication");
+				exit(1);
+			}
+			printf("New Application connection %s:%d\n",
+					  inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
+
+			// Start new thread to send the data to the application
+			pthread_t thread;
+			int *arg = malloc(sizeof(int));
+			*arg = dialogSocketApplication;
+			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,applicationThread,arg);
+			if(createThread!=0){
+				fprintf(stderr,"Error on thread creation\n");
+				exit(1);
+
+			}
+
+		}
+		if((modeUsed==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
+			// accept a new Android connection
+			struct sockaddr_in fromAddrAndroid;
+			socklen_t len=sizeof(fromAddrAndroid);
+			int dialogSocket=accept(listenSocketAndroid,(struct sockaddr *)&fromAddrAndroid,&len);
+			if(dialogSocket==-1){
+			  perror("accept");
+			  exit(1);
+			}
+			printf("Android connection %s:%d\n",
+			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
+
+			processingThread(dialogSocket,logfile);
+
+		}
+
+		if(modeUsed==BLUETOOTH){
+			if(FD_ISSET(socketBluetooth,&rdSet)){
+				processingThread(socketBluetooth,logfile);
+			}
+
+		}
+
+	}
+
+	//---- close listen socket ----
+	close(listenSocketApplication);
+	if(modeUsed==TCP){
+		close(listenSocketAndroid);
+	}
+	if(modeUsed==BLUETOOTH){
+		close(socketBluetooth);
+	}
+
+	//----close gnuplot-----
+	pclose(gp_accel);
+	pclose(gp_gyro);
+	pclose(gp_latency);
+
+	if(LOG_TO_FILE){
+	  fclose(logfile);
+	}
+	return EXIT_SUCCESS;
+}
+
+void processingThread(int dialogSocket, FILE *logfile){
 	//=======================================================================
 	// Program Variables
 
@@ -273,306 +428,284 @@ int main(int argc, char **argv){
 	double 	startTime,
 			endTime;
 
-	// Clear global matrix qnd set some constant values
-	rotationAndTranslation = gsl_matrix_calloc(4,4);
-	gsl_matrix_set(rotationAndTranslation,3,3,1.0);
 
+
+	//Each time the client connects, the buffers are cleaned
+	clearfifo(alpha_vel,SIZE_VALUES);
+	clearfifo(beta_vel,SIZE_VALUES);
+	clearfifo(gamma_vel,SIZE_VALUES);
+	alpha_vel_st=NAN,
+	beta_vel_st=NAN,
+	gamma_vel_st=NAN;
+
+	gsl_matrix_set_zero(Rx);
+	gsl_matrix_set_zero(Ry);
+	gsl_matrix_set_zero(Rz);
+	gsl_matrix_set_zero(rot_matrix);
+	gsl_matrix_set_zero(RxRy);
+	gsl_matrix_set_zero(instantaneous_rotation);
+	gsl_matrix_set_identity(previous_rotation);
+	int counter_gyro=0;
 
 	for(;;){
-		fd_set rdSet;
-		FD_ZERO(&rdSet);
-		FD_SET(listenSocketAndroid,&rdSet);
-		FD_SET(listenSocketApplication,&rdSet);
-		int maxFd = listenSocketAndroid>listenSocketApplication ? listenSocketAndroid:listenSocketApplication;
-		if(select(maxFd+1,&rdSet,(fd_set *)0,(fd_set *)0,(struct timeval *)0)==-1){
-			perror("select");
+
+		// Get message from the client
+		char buffer[SIZE_BUFFER];
+		int i;
+		for(i=0;i<SIZE_BUFFER;i++)
+			buffer[i]=0;
+		int nb=recv(dialogSocket,buffer,SIZE_BUFFER,0);
+		if(nb==-1) {
+			perror("recvfrom");
 			exit(1);
 		}
-		if(FD_ISSET(listenSocketApplication,&rdSet)){	// accept new connection from application
-			struct sockaddr_in fromAddrApplication;
-			socklen_t lenApplication = sizeof(fromAddrApplication);
-			int dialogSocketApplication=accept(listenSocketApplication,(struct sockaddr *)&fromAddrApplication,&lenApplication);
-			if(dialogSocketApplication==-1){
-				perror("AcceptApplication");
-				exit(1);
-			}
-			printf("New Application connection %s:%d\n",
-					  inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
+		else if(nb==0){
+			break;
+		}
 
-			// Start new thread to send the data to the application
-			pthread_t thread;
-			int *arg = malloc(sizeof(int));
-			*arg = dialogSocketApplication;
-			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,arg);
-			if(createThread!=0){
-				fprintf(stderr,"Error on thread creation\n");
-				exit(1);
+		if(MEASURE_EXECUTION_TIME){
+			clock_gettime(CLOCK_REALTIME, &spec);
+			startTime = round(spec.tv_nsec / 1.0e3);
+		}
+		if(LOG_TO_FILE){
+			fprintf(logfile,"%s",buffer);
+		}
+		buffer[nb]='\0';
+
+		//printf("from %s %d : %d bytes:\n%s\n",
+		//	inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
+
+		char * sliding_pointer = buffer;
+		while (*sliding_pointer!='\0') {
+			char sensorType;
+			double values[3];
+			double timeValue;
+			long frameID;
+
+			if((*sliding_pointer!='G')&&(*sliding_pointer!='S')){
+				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
+				exit(EXIT_FAILURE);
+			}
+
+			if(sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",	&sensorType,&frameID,
+																	&timeValue,values,values+1,values+2)
+																	!= 6){
+				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
+				exit(EXIT_FAILURE);
+			}
+
+			if((values[0]==NAN)||(values[1]==NAN)||(values[2]==NAN)){
+				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
+				exit(EXIT_FAILURE);
+			}
+
+			if(sensorType=='G'){
+
+				if(counter_gyro<SIZE_VALUES){
+					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+					counter_gyro++;
+				}
+				else if(counter_gyro==SIZE_VALUES){
+					alpha_vel_st = sumfifo(alpha_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+					beta_vel_st = sumfifo(beta_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+					gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
+					counter_gyro++;
+					printf("Calibrating Gyro...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
+					//printfifo(alpha_vel,SIZE_VALUES);
+				}
+				else{
+
+					// Store current angular velocity in a fifo
+					//loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
+					//loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
+					//loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
+					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
+					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
+					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+
+
+					double 	alpha_filtered,
+							beta_filtered,
+							gamma_filtered;
+
+					alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
+					beta_filtered = FIRfilter(beta_vel,firCoefs,32);
+					gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
+
+
+					// Integrate to calculate the instantaneous rotation
+					double alpha_pos_delta = alpha_filtered*timeValue;
+					double beta_pos_delta = beta_filtered*timeValue;
+					double gamma_pos_delta = gamma_filtered*timeValue;
+
+					//Calculate rotation matrices
+					// Be aware that the axis from the telephone and the axis for the application are not
+					// the same!
+					// x_application => x_telephone
+					// y_application => -z_telephone
+					// z_application => y_telephone
+					gsl_matrix_set(Rx,0,0,1);
+					gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
+					gsl_matrix_set(Rx,1,2,sin(alpha_pos_delta));
+					gsl_matrix_set(Rx,2,1,-sin(alpha_pos_delta));
+					gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
+
+					gsl_matrix_set(Ry,0,0,cos(gamma_pos_delta));
+					gsl_matrix_set(Ry,0,2,sin(gamma_pos_delta));
+					gsl_matrix_set(Ry,1,1,1);
+					gsl_matrix_set(Ry,2,0,-sin(gamma_pos_delta));
+					gsl_matrix_set(Ry,2,2,cos(gamma_pos_delta));
+
+					gsl_matrix_set(Rz,0,0,cos(beta_pos_delta));
+					gsl_matrix_set(Rz,0,1,-sin(beta_pos_delta));
+					gsl_matrix_set(Rz,1,0,sin(beta_pos_delta));
+					gsl_matrix_set(Rz,1,1,cos(beta_pos_delta));
+					gsl_matrix_set(Rz,2,2,1);
+
+					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+											1.0, Rx,Ry,
+											0.0, RxRy);
+					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+											1.0, RxRy,Rz,
+											0.0, instantaneous_rotation);
+
+					// Add the instantaneous rotation to the previous one
+					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+								1.0, previous_rotation,instantaneous_rotation,
+								0.0, rot_matrix);
+					gsl_matrix_memcpy(previous_rotation,rot_matrix);
+					//printMatrix(rot_matrix);
+
+					gsl_matrix_set(rotationAndTranslation,0,0,gsl_matrix_get(rot_matrix,0,0));
+					gsl_matrix_set(rotationAndTranslation,0,1,gsl_matrix_get(rot_matrix,0,1));
+					gsl_matrix_set(rotationAndTranslation,0,2,gsl_matrix_get(rot_matrix,0,2));
+					gsl_matrix_set(rotationAndTranslation,1,0,gsl_matrix_get(rot_matrix,1,0));
+					gsl_matrix_set(rotationAndTranslation,1,1,gsl_matrix_get(rot_matrix,1,1));
+					gsl_matrix_set(rotationAndTranslation,1,2,gsl_matrix_get(rot_matrix,1,2));
+					gsl_matrix_set(rotationAndTranslation,2,0,gsl_matrix_get(rot_matrix,2,0));
+					gsl_matrix_set(rotationAndTranslation,2,1,gsl_matrix_get(rot_matrix,2,1));
+					gsl_matrix_set(rotationAndTranslation,2,2,gsl_matrix_get(rot_matrix,2,2));
+
+					//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
+					//fflush(gp_gyro);
+					//fprintf(gp_latency,"%lf\n",timeValue);
+					//fflush(gp_latency);
+
+
+				}
 
 			}
+			else if(sensorType=='S'){
+				const float xy_scale=0.2;
+				const float z_scale=3;
+
+				loadfifoMooving(values[0]*xy_scale,x_vel,SIZE_VALUES);
+				loadfifoMooving(values[1]*xy_scale,y_vel,SIZE_VALUES);
+				loadfifoMooving(values[2]*z_scale,z_vel,SIZE_VALUES);
+
+				screen_x = xy_scale*values[0]+screen_x;
+				screen_y = xy_scale*values[1]+screen_y;
+				screen_z = z_scale*values[2]+screen_z;
+
+
+				gsl_matrix_set(rotationAndTranslation,0,3,screen_x);
+				gsl_matrix_set(rotationAndTranslation,1,3,screen_y);
+				gsl_matrix_set(rotationAndTranslation,2,3,screen_z);
+
+				//fprintf(gp_accel, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
+				//fflush(gp_accel);
+
+			}
+			else{
+				printf("Wrong sensor type: %c\n",sensorType);
+			}
+
+			// jump to next line
+			while(*(++sliding_pointer)!='\n');
+			sliding_pointer++;
 
 		}
 
-		if(FD_ISSET(listenSocketAndroid,&rdSet)){
-			//Each time the client connects, the buffers are cleaned
-			clearfifo(alpha_vel,SIZE_VALUES);
-			clearfifo(beta_vel,SIZE_VALUES);
-			clearfifo(gamma_vel,SIZE_VALUES);
-			alpha_vel_st=NAN,
-			beta_vel_st=NAN,
-			gamma_vel_st=NAN;
+		if(MEASURE_EXECUTION_TIME){
+			clock_gettime(CLOCK_REALTIME, &spec);
+			endTime = round(spec.tv_nsec / 1.0e3);
+			printf("Execution time (ns): %g\n",endTime-startTime);
+		}
 
-			// accept a new Android connection
-			struct sockaddr_in fromAddrAndroid;
-			socklen_t len=sizeof(fromAddrAndroid);
-			int dialogSocket=accept(listenSocketAndroid,(struct sockaddr *)&fromAddrAndroid,&len);
-			if(dialogSocket==-1){
-			  perror("accept");
-			  exit(1);
-			}
-			printf("Android connection %s:%d\n",
-			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
+		//---- send reply to client ----
+//		nb=htons(nb);
+//		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
+//			perror("send");
+//			exit(1);
+//		}
 
-			gsl_matrix_set_identity(previous_rotation);
+	}
 
-			int counter_gyro=0;
-			for(;;){
-				gsl_matrix_set_zero(Rx);
-				gsl_matrix_set_zero(Ry);
-				gsl_matrix_set_zero(Rz);
-				gsl_matrix_set_zero(rot_matrix);
-				gsl_matrix_set_zero(RxRy);
-				gsl_matrix_set_zero(instantaneous_rotation);
+	//---- close dialog socket ----
+	printf("client disconnected\n");
+	close(dialogSocket);
 
-				// Get message from the client
-				char buffer[SIZE_TCP_BUFFER];
-				for(int i=0;i<SIZE_TCP_BUFFER;i++)
-					buffer[i]=0;
-				int nb=recv(dialogSocket,buffer,SIZE_TCP_BUFFER,0);
-				if(nb==-1) {
-					perror("recvfrom");
-					exit(1);
-				}
-				else if(nb==0){
-					break;
-				}
+	gsl_matrix_free(Rx);
+	gsl_matrix_free(Ry);
+	gsl_matrix_free(Rz);
+	gsl_matrix_free(rot_matrix);
+	gsl_matrix_free(RxRy);
+	gsl_matrix_free(instantaneous_rotation);
+}
 
-				if(MEASURE_EXECUTION_TIME){
-					clock_gettime(CLOCK_REALTIME, &spec);
-					startTime = round(spec.tv_nsec / 1.0e3);
-				}
-				if(LOG_TO_FILE){
-					fprintf(logfile,"%s",buffer);
-				}
-				buffer[nb]='\0';
-
-				//printf("from %s %d : %d bytes:\n%s\n",
-				//	inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
-
-				char * sliding_pointer = buffer;
-				while (*sliding_pointer!='\0') {
-					char sensorType;
-					double values[3];
-					double timeValue;
-					long frameID;
-
-					if((*sliding_pointer!='G')&&(*sliding_pointer!='S')){
-						fprintf(stderr,"ERRONEOUS FRAME: from %s %d : %d bytes:\n%s\n",
-								inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
-						exit(EXIT_FAILURE);
-					}
-
-					if( sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",&sensorType,&frameID,&timeValue,values,values+1,values+2) != 6){
-						fprintf(stderr,"Invalid line format?: from %s %d : %d bytes:\n%s\n",
-								inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
-						close(dialogSocket);
-						close(listenSocketAndroid);
-						exit(EXIT_FAILURE);
-					}
-
-					if((values[0]==NAN)||(values[1]==NAN)||(values[2]==NAN)){
-						fprintf(stderr,"NAN numbers found: from %s %d : %d bytes:\n%s\n",
-								inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port),nb,buffer);
-						close(dialogSocket);
-						close(listenSocketAndroid);
-						exit(EXIT_FAILURE);
-					}
-
-					if(sensorType=='G'){
-
-						if(counter_gyro<SIZE_VALUES){
-							loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-							loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-							loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
-							counter_gyro++;
-						}
-						else if(counter_gyro==SIZE_VALUES){
-							alpha_vel_st = sumfifo(alpha_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-							beta_vel_st = sumfifo(beta_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-							gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-							counter_gyro++;
-							printf("Calibrating Gyro...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
-							//printfifo(alpha_vel,SIZE_VALUES);
-						}
-						else{
-
-							// Store current angular velocity in a fifo
-							//loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
-							//loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
-							//loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
-							loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-							loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-							loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
-
-
-							double 	alpha_filtered,
-									beta_filtered,
-									gamma_filtered;
-
-							alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
-							beta_filtered = FIRfilter(beta_vel,firCoefs,32);
-							gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
-
-
-							// Integrate to calculate the instantaneous rotation
-							double alpha_pos_delta = alpha_filtered*timeValue;
-							double beta_pos_delta = beta_filtered*timeValue;
-							double gamma_pos_delta = gamma_filtered*timeValue;
-
-							//Calculate rotation matrices
-							// Be aware that the axis from the telephone and the axis for the application are not
-							// the same!
-							// x_application => x_telephone
-							// y_application => -z_telephone
-							// z_application => y_telephone
-							gsl_matrix_set(Rx,0,0,1);
-							gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
-							gsl_matrix_set(Rx,1,2,sin(alpha_pos_delta));
-							gsl_matrix_set(Rx,2,1,-sin(alpha_pos_delta));
-							gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
-
-							gsl_matrix_set(Ry,0,0,cos(gamma_pos_delta));
-							gsl_matrix_set(Ry,0,2,sin(gamma_pos_delta));
-							gsl_matrix_set(Ry,1,1,1);
-							gsl_matrix_set(Ry,2,0,-sin(gamma_pos_delta));
-							gsl_matrix_set(Ry,2,2,cos(gamma_pos_delta));
-
-							gsl_matrix_set(Rz,0,0,cos(beta_pos_delta));
-							gsl_matrix_set(Rz,0,1,-sin(beta_pos_delta));
-							gsl_matrix_set(Rz,1,0,sin(beta_pos_delta));
-							gsl_matrix_set(Rz,1,1,cos(beta_pos_delta));
-							gsl_matrix_set(Rz,2,2,1);
-
-							gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-													1.0, Rx,Ry,
-													0.0, RxRy);
-							gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-													1.0, RxRy,Rz,
-													0.0, instantaneous_rotation);
-
-							// Add the instantaneous rotation to the previous one
-							gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-										1.0, previous_rotation,instantaneous_rotation,
-										0.0, rot_matrix);
-							gsl_matrix_memcpy(previous_rotation,rot_matrix);
-							//printMatrix(rot_matrix);
-
-							gsl_matrix_set(rotationAndTranslation,0,0,gsl_matrix_get(rot_matrix,0,0));
-							gsl_matrix_set(rotationAndTranslation,0,1,gsl_matrix_get(rot_matrix,0,1));
-							gsl_matrix_set(rotationAndTranslation,0,2,gsl_matrix_get(rot_matrix,0,2));
-							gsl_matrix_set(rotationAndTranslation,1,0,gsl_matrix_get(rot_matrix,1,0));
-							gsl_matrix_set(rotationAndTranslation,1,1,gsl_matrix_get(rot_matrix,1,1));
-							gsl_matrix_set(rotationAndTranslation,1,2,gsl_matrix_get(rot_matrix,1,2));
-							gsl_matrix_set(rotationAndTranslation,2,0,gsl_matrix_get(rot_matrix,2,0));
-							gsl_matrix_set(rotationAndTranslation,2,1,gsl_matrix_get(rot_matrix,2,1));
-							gsl_matrix_set(rotationAndTranslation,2,2,gsl_matrix_get(rot_matrix,2,2));
-
-							//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
-							//fflush(gp_gyro);
-							//fprintf(gp_latency,"%lf\n",timeValue);
-							//fflush(gp_latency);
-
-
-						}
-
-					}
-					else if(sensorType=='S'){
-						const float xy_scale=0.2;
-						const float z_scale=3;
-
-						loadfifoMooving(values[0]*xy_scale,x_vel,SIZE_VALUES);
-						loadfifoMooving(values[1]*xy_scale,y_vel,SIZE_VALUES);
-						loadfifoMooving(values[2]*z_scale,z_vel,SIZE_VALUES);
-
-						screen_x = xy_scale*values[0]+screen_x;
-						screen_y = xy_scale*values[1]+screen_y;
-						screen_z = z_scale*values[2]+screen_z;
-
-
-						gsl_matrix_set(rotationAndTranslation,0,3,screen_x);
-						gsl_matrix_set(rotationAndTranslation,1,3,screen_y);
-						gsl_matrix_set(rotationAndTranslation,2,3,screen_z);
-
-						fprintf(gp_accel, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
-						fflush(gp_accel);
-
-
-
-					}
-					else{
-						printf("Wrong sensor type: %c\n",sensorType);
-					}
-
-					// jump to next line
-					while(*(++sliding_pointer)!='\n');
-					sliding_pointer++;
-
-				}
-
-				if(MEASURE_EXECUTION_TIME){
-					clock_gettime(CLOCK_REALTIME, &spec);
-					endTime = round(spec.tv_nsec / 1.0e3);
-					printf("Execution time (ns): %g\n",endTime-startTime);
-				}
-
-				//---- send reply to client ----
-		//		nb=htons(nb);
-		//		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
-		//			perror("send");
-		//			exit(1);
-		//		}
-
+void * applicationThread(void * arg){
+	pthread_detach(pthread_self());
+	int socket =*(int *) arg;
+	free(arg);
+	for(;;){
+		// Get ask msg from the client
+		char buffer[SIZE_VALUES];
+		int nb=recv(socket,buffer,SIZE_VALUES,0);
+		if(nb<=0){
+			break;
+		}
+		buffer[nb]='\0';
+		if(strncmp(buffer,"VALS",4)==0){
+			// Send rotationAndTranslation matrix to the client. Only the useful data!
+			if(rotationAndTranslation!=NULL){
+				//printf("matrix asked");
+				nb = sprintf(buffer,"MAT:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g:%g;\n",
+							gsl_matrix_get(rotationAndTranslation,0,0),
+							gsl_matrix_get(rotationAndTranslation,0,1),
+							gsl_matrix_get(rotationAndTranslation,0,2),
+							gsl_matrix_get(rotationAndTranslation,0,3),
+							gsl_matrix_get(rotationAndTranslation,1,0),
+							gsl_matrix_get(rotationAndTranslation,1,1),
+							gsl_matrix_get(rotationAndTranslation,1,2),
+							gsl_matrix_get(rotationAndTranslation,1,3),
+							gsl_matrix_get(rotationAndTranslation,2,0),
+							gsl_matrix_get(rotationAndTranslation,2,1),
+							gsl_matrix_get(rotationAndTranslation,2,2),
+							gsl_matrix_get(rotationAndTranslation,2,3),
+							gsl_matrix_get(rotationAndTranslation,3,0),
+							gsl_matrix_get(rotationAndTranslation,3,1),
+							gsl_matrix_get(rotationAndTranslation,3,2),
+							gsl_matrix_get(rotationAndTranslation,3,3));
 			}
 
-			//---- close dialog socket ----
-			printf("client disconnected\n");
-			close(dialogSocket);
+		}
+		else{
+			nb=sprintf(buffer,"Erroneous command\n");
+		}
+
+		// Send answer to client
+		if(send(socket,buffer,nb,0)==-1){
+			perror("sendThread");
+			exit(1);
 		}
 	}
 
-
-
-  //---- close listen socket ----
-  close(listenSocketAndroid);
-  close(listenSocketApplication);
-
-  //----close gnuplot-----
-  pclose(gp_accel);
-  pclose(gp_gyro);
-  pclose(gp_latency);
-
-
-  gsl_matrix_free(Rx);
-  gsl_matrix_free(Ry);
-  gsl_matrix_free(Rz);
-  gsl_matrix_free(rot_matrix);
-  gsl_matrix_free(RxRy);
-  gsl_matrix_free(instantaneous_rotation);
-
-
-  if(LOG_TO_FILE){
-	  fclose(logfile);
-  }
-  return 0;
+	//close dialog socket
+	printf("Application disconnected\n");
+	close(socket);
+	return (void *)0;
 }
 
 double toDegrees(double radians){
@@ -591,6 +724,15 @@ void printMatrix(gsl_matrix *A){
 		printf("\n");
 	}
 	printf("\n");
+}
+
+void howToUse(char **argv){
+	fprintf(stderr,"Please use:\n\n");
+	fprintf(stderr,"%s TCP [TCPportAndroid] [TCPportApplication]\n",argv[0]);
+	fprintf(stderr,"for TCP connection with the phone or\n\n");
+	fprintf(stderr,"%s BT [BTaddressAndroid] [TCPportApplication]\n",argv[0]);
+	fprintf(stderr,"for Bluetooth connection with the phone\n");
+	exit(EXIT_FAILURE);
 }
 
 

@@ -1,10 +1,12 @@
 ##############################################################################
 
 CC=gcc
-CFLAGS=-std=c99 -U__STRICT_ANSI__ \
+#CFLAGS=-std=c99 -U__STRICT_ANSI__ \
        -W -Wall -pedantic -O3 \
        -D_REENTRANT
-LDFLAGS=-lpthread -lm -lgsl -lgslcblas
+
+CFLAGS= -U__STRICT_ANSI__ -W -Wall -O3 -D_REENTRANT
+LDFLAGS=-lpthread -lm -lgsl -lgslcblas -lbluetooth
 SOURCES= simple_tcp_server.c fifo.c
 EXECUTABLE = simple_tcp_server.bin
 

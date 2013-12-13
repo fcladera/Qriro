@@ -12,5 +12,12 @@
 
 double toDegrees(double);
 void printMatrix(gsl_matrix * A);
+void howToUse();
+
+void processingThread(int dialogSocket, FILE *logfile);
+void *applicationThread(void * arg);
+
+
+typedef enum x{TCP,BLUETOOTH} mode;
 
 #endif /* SIMPLE_TCP_SERVER_H_ */
