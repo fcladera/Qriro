@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
-
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
@@ -30,7 +29,7 @@ public class BluetoothServerService extends Service {
 			UUID.fromString("2fa7beb1-6acf-4703-8b7e-dcbc14f07b89"); 
 
 	// Connection state
-	private int state = -1;
+	private int state = STATE_NONE;
     public static final int STATE_NONE = 0;       // we're doing nothing
     public static final int STATE_LISTEN = 1;     // now listening for incoming connections
     public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
@@ -75,7 +74,6 @@ public class BluetoothServerService extends Service {
 	    	
 	    	case LISTEN:
 	    		bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-	    		state = STATE_NONE;
 	    		connectedThread = null;
 	    		if(connectedThread!=null){
 	    			connectedThread.cancel();
@@ -87,22 +85,13 @@ public class BluetoothServerService extends Service {
     			if(acceptThread == null){
     				acceptThread = new AcceptThread();
     				acceptThread.start();
-    				state = STATE_LISTEN;
+    				setState(STATE_LISTEN);
     			}
     			//Log.d(TAG, "Listening bluetooth socket");
 	    		break;
 	    	
 	    	case STOP_LISTEN:
-	    		
-    			Log.d("TCPclienService","Disconnecting from server");
-    			if(connectedThread!=null)
-    				connectedThread.cancel();
-    			if(acceptThread!=null)
-    				acceptThread.cancel();
-	    			
-	    		
-	    		stopSelf();	// Destroy service on disconnection
-	    			
+	    		stopServer();
 	    		break;
 	    		
 	    	case SENDMSG:
@@ -125,7 +114,7 @@ public class BluetoothServerService extends Service {
 	    		
 	    	case GETSTATUS:
 	    		Intent intent = new Intent(NOTIFICATION);
-	    		intent.putExtra(STATUS, state);
+	    		intent.putExtra(STATUS, getState());
 	    		sendBroadcast(intent);
 	    	default:
 	    		Log.w(TAG,"Erroneous code");
@@ -133,6 +122,31 @@ public class BluetoothServerService extends Service {
 	    	
 	    	}
 	    }
+	}
+	
+	private synchronized void setState(int s) {
+        Log.d(TAG, "State:\t" + state + " -> " + s);
+		state = s;
+		
+		// Give the new state to the Handler so the UI Activity can update
+		//mHandler.obtainMessage(BluetoothChat.MESSAGE_STATE_CHANGE, state, -1).sendToTarget();
+	}
+	
+	public synchronized void stopServer(){
+		Log.d(TAG, "Stopping bluetooth server");
+		setState(STATE_NONE);
+		if(connectedThread!=null)
+			connectedThread.cancel();
+		if(acceptThread!=null)
+			acceptThread.cancel();
+		
+		
+		stopSelf();	// Destroy service on disconnection
+	}
+
+	    
+	public synchronized int getState() {
+	    return state;
 	}
 	
 	private class AcceptThread extends Thread{
@@ -159,20 +173,36 @@ public class BluetoothServerService extends Service {
 				}
 				
 				if(bluetoothSocket != null){
+					// manage connection
 					synchronized (BluetoothServerService.this) {
-						try {
-							// manage connection
-							// TODO do it better, read BluetoothChat
-							state = STATE_CONNECTING;
-							connectedThread = new ConnectedThread(bluetoothSocket);
-							connectedThread.start();
-							Log.d(TAG,"Created connectedThread");
-							bluetoothServerSocket.close();
-						} catch (IOException e) {
-							Log.e(TAG,"Error closing socket after connection");
-							stopSelf();
-						}
-						break;
+							switch(state){
+							case STATE_LISTEN:
+								try{
+									setState(STATE_CONNECTING);
+									connectedThread = new ConnectedThread(bluetoothSocket);
+									connectedThread.start();
+									Log.d(TAG,"Created connectedThread");
+									bluetoothServerSocket.close();
+									break;
+								} catch (IOException e) {
+									Log.e(TAG,"Error closing socket after connection");
+									stopSelf();
+								}
+								break;
+							case STATE_NONE:
+							case STATE_CONNECTING:
+							case STATE_CONNECTED:
+							default:
+								try {
+									bluetoothSocket.close();
+									Log.e(TAG,"Closing socket on erroneous behavior");
+								} catch (IOException e) {
+									Log.e(TAG,"Error closing socket on erroneous behavior");
+									e.printStackTrace();
+								}
+								break;
+							}				
+						
 					}
 					
 				}
@@ -187,6 +217,19 @@ public class BluetoothServerService extends Service {
 			}
 		}
 	}
+	
+	private void connectionLost() {
+        // Send a failure message back to the Activity
+        /*Message msg = mHandler.obtainMessage(BluetoothChat.MESSAGE_TOAST);
+        Bundle bundle = new Bundle();
+        bundle.putString(BluetoothChat.TOAST, "Device connection was lost");
+        msg.setData(bundle);
+        mHandler.sendMessage(msg);
+
+        // Start the service over to restart listening mode
+        BluetoothChatService.this.start();*/
+		stopServer();
+    }
 	
 	private class ConnectedThread extends Thread{
 		private final BluetoothSocket bluetoothSocket;
@@ -207,7 +250,7 @@ public class BluetoothServerService extends Service {
 			}
 			inputStream = tmpIn;
 			outputStream = tmpOut;
-			state = STATE_CONNECTED;
+			setState(STATE_CONNECTED);
 			Log.d(TAG,"Created Input/output streams");
 		}
 		
@@ -215,12 +258,13 @@ public class BluetoothServerService extends Service {
 			byte[] buffer = new byte[BUFFER_SIZE];
 			int bytesRead;
 			
-			while(true){
+			while(state == STATE_CONNECTED){
 				try{
 					bytesRead = inputStream.read(buffer);
 				}
 				catch(IOException e){
 					Log.e(TAG, "Error reading input stream, disconnected");
+					connectionLost();
 				}
 			}
 		}
