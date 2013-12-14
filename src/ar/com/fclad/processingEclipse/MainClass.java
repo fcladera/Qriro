@@ -1,5 +1,6 @@
 package ar.com.fclad.processingEclipse;
 
+import java.awt.Color;
 import java.util.ArrayList;
 
 import processing.core.*;
@@ -17,18 +18,25 @@ public class MainClass extends PApplet{
 	public float MAXSPEED = 50; // the maximum speed at which a pyramid may move
 
 	ArrayList <Pyramid> shapes = new ArrayList <Pyramid> (); // arrayList to store all the shapes
-	boolean bLights, bWhitebackground, setPerspective; // booleans for toggling lights and background
+	boolean bLights, 	
+			bWhitebackground=true, 
+			setPerspective; // booleans for toggling lights and background
+	
+	Pyramid testPyramid;
 
 	public void setup() {
 	  size(1280, 720, PGraphicsOpenGL.OPENGL); // use the P3D OpenGL renderer
 	  //noStroke(); // turn off stroke (for the rest of the sketch)
 	  smooth(6); // set smooth level 6 (default is 2)
 	  // create all the shapes with a certain radius and height
-	  for (int i=0; i<NUMSHAPES; i++) {
+	  
+	  /*for (int i=0; i<NUMSHAPES; i++) {
 	    float r = random(25, 200);
 	    float f = random(2, 5);
-	    shapes.add( new Pyramid(this,f*r, r) );
+	    shapes.add( new Pyramid(this, r) );
 	  }
+	  */
+	  testPyramid = new Pyramid(this, 150);
 	}
 
 	public void draw() {
@@ -37,19 +45,24 @@ public class MainClass extends PApplet{
 	  if(setPerspective)
 		  perspective((float)(PI/3.0), (float) width/height, (float)1, (float)1000000); // perspective to see close shapes
 	  // update and display all the shapes
-	  /*
+	  
+	  pushMatrix();
 	  translate(width/2,height/2);
 	  rotateX((float)Math.PI/4);
 	  rotateY((float)Math.PI/4);
 	  rotateZ((float)Math.PI/4);
+	  fill(255);
+	  sphere(45);
+	  popMatrix();
 	  
-	  box(45);
-	  */
-	  
+	  //testPyramid.update();
+	  testPyramid.display();
+	  /*
 	  for (Pyramid p : shapes) {
 	    p.update();
 	    p.display();
 	  }
+	  */
 	  
 	}
 
@@ -59,6 +72,7 @@ public class MainClass extends PApplet{
 	  if (mouseButton == CENTER){
 		  setPerspective = !setPerspective;
 		  print(setPerspective+"\n");
+		  testPyramid.update();
 	  }
 	}
 	
