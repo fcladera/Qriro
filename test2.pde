@@ -56,6 +56,8 @@ class Cube{
                              {0f,1f,0f,0f},
                              {0f,0f,1f,-200f},
                              {0f,0f,0f,1f}};
+                             
+                             
   
   float alpha = 0;
   float beta = 0;
@@ -146,9 +148,10 @@ class Cube{
     //rotateZ(gamma);
     PMatrix3D matrix = new PMatrix3D(rotationMatrix[0][0],rotationMatrix[0][1],rotationMatrix[0][2],rotationMatrix[0][3],
                                      rotationMatrix[1][0],rotationMatrix[1][1],rotationMatrix[1][2],rotationMatrix[1][3],
-                                     rotationMatrix[2][0],rotationMatrix[2][1],rotationMatrix[2][2],rotationMatrix[2][3],
+                                     rotationMatrix[2][0],rotationMatrix[2][1],rotationMatrix[2][2],rotationMatrix[2][3]-400,
                                      rotationMatrix[3][0],rotationMatrix[3][1],rotationMatrix[3][2],rotationMatrix[3][3]) ;
     setMatrix(matrix);
+    //scale(1,-1);
     // usar scale en vez de el tamaño
     box(z_pos);
     myClient.write("VALS");
