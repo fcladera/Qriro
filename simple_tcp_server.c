@@ -33,6 +33,7 @@
 #include "fifo.h"
 #include "simple_tcp_server.h"
 
+// TODO server should be able to disconnect and reconnect
 
 //=======================================================================
 // Program parameters
@@ -45,7 +46,7 @@
 
 //=======================================================================
 // Global variables
-gsl_matrix *rotationAndTranslation = NULL;	// matrix shared by the android server and the application server
+gsl_matrix *rotationAndTranslation = NULL;	// Rotation matrix shared by the android server and the application server
 mode modeUsed;
 
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
@@ -328,7 +329,7 @@ int main(int argc, char **argv){
 				perror("AcceptApplication");
 				exit(1);
 			}
-			printf("New Application connection %s:%d\n",
+			printf("New Application TCP connection %s:%d\n",
 					  inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
 
 			// Start new thread to send the data to the application
@@ -352,7 +353,7 @@ int main(int argc, char **argv){
 			  perror("accept");
 			  exit(1);
 			}
-			printf("Android connection %s:%d\n",
+			printf("Android TCP connection %s:%d\n",
 			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
 			processingThread(dialogSocket,logfile);
@@ -427,8 +428,6 @@ void processingThread(int dialogSocket, FILE *logfile){
 	struct timespec spec;
 	double 	startTime,
 			endTime;
-
-
 
 	//Each time the client connects, the buffers are cleaned
 	clearfifo(alpha_vel,SIZE_VALUES);
@@ -512,7 +511,7 @@ void processingThread(int dialogSocket, FILE *logfile){
 					beta_vel_st = sumfifo(beta_vel,SIZE_VALUES)/(double)SIZE_VALUES;
 					gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
 					counter_gyro++;
-					printf("Calibrating Gyro...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
+					printf("Gyro Calibrated...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
 					//printfifo(alpha_vel,SIZE_VALUES);
 				}
 				else{
@@ -578,15 +577,25 @@ void processingThread(int dialogSocket, FILE *logfile){
 					gsl_matrix_memcpy(previous_rotation,rot_matrix);
 					//printMatrix(rot_matrix);
 
-					gsl_matrix_set(rotationAndTranslation,0,0,gsl_matrix_get(rot_matrix,0,0));
-					gsl_matrix_set(rotationAndTranslation,0,1,gsl_matrix_get(rot_matrix,0,1));
-					gsl_matrix_set(rotationAndTranslation,0,2,gsl_matrix_get(rot_matrix,0,2));
-					gsl_matrix_set(rotationAndTranslation,1,0,gsl_matrix_get(rot_matrix,1,0));
-					gsl_matrix_set(rotationAndTranslation,1,1,gsl_matrix_get(rot_matrix,1,1));
-					gsl_matrix_set(rotationAndTranslation,1,2,gsl_matrix_get(rot_matrix,1,2));
-					gsl_matrix_set(rotationAndTranslation,2,0,gsl_matrix_get(rot_matrix,2,0));
-					gsl_matrix_set(rotationAndTranslation,2,1,gsl_matrix_get(rot_matrix,2,1));
-					gsl_matrix_set(rotationAndTranslation,2,2,gsl_matrix_get(rot_matrix,2,2));
+					double	m00 = gsl_matrix_get(rot_matrix,0,0),
+							m01 = gsl_matrix_get(rot_matrix,0,1),
+							m02 = gsl_matrix_get(rot_matrix,0,2),
+							m10 = gsl_matrix_get(rot_matrix,1,0),
+							m11 = gsl_matrix_get(rot_matrix,1,1),
+							m12 = gsl_matrix_get(rot_matrix,1,2),
+							m20 = gsl_matrix_get(rot_matrix,2,0),
+							m21 = gsl_matrix_get(rot_matrix,2,1),
+							m22 = gsl_matrix_get(rot_matrix,2,2);
+
+					gsl_matrix_set(rotationAndTranslation,0,0,m00);
+					gsl_matrix_set(rotationAndTranslation,0,1,m01);
+					gsl_matrix_set(rotationAndTranslation,0,2,m02);
+					gsl_matrix_set(rotationAndTranslation,1,0,m10);
+					gsl_matrix_set(rotationAndTranslation,1,1,m11);
+					gsl_matrix_set(rotationAndTranslation,1,2,m12);
+					gsl_matrix_set(rotationAndTranslation,2,0,m20);
+					gsl_matrix_set(rotationAndTranslation,2,1,m21);
+					gsl_matrix_set(rotationAndTranslation,2,2,m22);
 
 					//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
 					//fflush(gp_gyro);
@@ -667,7 +676,8 @@ void * applicationThread(void * arg){
 			break;
 		}
 		buffer[nb]='\0';
-		if(strncmp(buffer,"VALS",4)==0){
+		//printf("%s\n",buffer);
+		if(strncmp(buffer,"GETMAT",6)==0){
 			// Send rotationAndTranslation matrix to the client. Only the useful data!
 			if(rotationAndTranslation!=NULL){
 				//printf("matrix asked");
@@ -692,7 +702,7 @@ void * applicationThread(void * arg){
 
 		}
 		else{
-			nb=sprintf(buffer,"Erroneous command\n");
+			nb=sprintf(buffer,"ERR\n");
 		}
 
 		// Send answer to client
