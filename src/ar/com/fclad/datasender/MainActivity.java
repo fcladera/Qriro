@@ -15,6 +15,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
@@ -51,7 +52,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	private int connectionMode;
 	
 	// TCP server parameters
-	private static final String remoteServer = "192.168.1.122";
+	private String ServerIP = "192.168.1.122";
 	private int port = 7777;
 	
 	
@@ -60,6 +61,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 	//private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
     //private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
     private static final int REQUEST_ENABLE_BT = 3;
+    private static final int REQUEST_MODIFY_TCP_PARAMETERS = 4;
 	
 	// UI elements
 	private ToggleButton testSensors;
@@ -259,7 +261,17 @@ public class MainActivity extends Activity implements SensorEventListener{
 	            finish();
 			}
 			break;
-
+		case REQUEST_MODIFY_TCP_PARAMETERS:
+			if(resultCode == RESULT_OK){
+				if(data.hasExtra(ConfigureTCP.IP_ADDRESS)){
+					ServerIP = data.getExtras().getString(ConfigureTCP.IP_ADDRESS);
+					Log.d(TAG,"New IP "+ServerIP);
+				}
+				if(data.hasExtra(ConfigureTCP.PORT)){
+					port = data.getExtras().getInt(ConfigureTCP.PORT);
+					Log.d(TAG,"New Port "+port);
+				}
+			}
 		default:
 			break;
 		}
@@ -287,7 +299,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 			Intent i = new Intent(this, TCPclientService.class);
 			i.putExtra(TCPclientService.COMMAND, TCPclientService.CONNECT);
 			i.putExtra(TCPclientService.PORT, port);
-			i.putExtra(TCPclientService.SERVER, remoteServer);
+			i.putExtra(TCPclientService.SERVER, ServerIP);
 			startService(i);
 			if(testingSensors){
 				sensorManager.unregisterListener(this);
@@ -363,6 +375,20 @@ public class MainActivity extends Activity implements SensorEventListener{
 		return true;
 	}
 
+	public boolean onOptionsItemSelected(MenuItem item){
+		switch (item.getItemId()) {
+		case R.id.modify_tcp_parameters:
+			Log.d(TAG,"modifying tcp parameters");
+			Intent intent = new Intent(this,ConfigureTCP.class);
+			startActivityForResult(intent, REQUEST_MODIFY_TCP_PARAMETERS);
+			break;
+
+		default:
+			break;
+		}
+		return true;
+	}
+	
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 	}

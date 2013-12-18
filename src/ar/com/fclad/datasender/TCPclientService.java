@@ -138,7 +138,7 @@ public class TCPclientService extends Service {
 					Log.e(TAG,"Connection error");
 					setState(STATE_NONE);
 				}
-				return params[0];
+				return params[0]+":"+port;
 		}
 		
 		protected void onPostExecute(String result){
