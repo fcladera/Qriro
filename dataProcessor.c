@@ -31,7 +31,7 @@
 #include <gsl/gsl_blas.h>
 
 #include "fifo.h"
-#include "simple_tcp_server.h"
+#include "dataProcessor.h"
 
 // TODO server should be able to disconnect and reconnect
 
