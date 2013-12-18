@@ -36,18 +36,10 @@
 // TODO server should be able to disconnect and reconnect
 
 //=======================================================================
-// Program parameters
-
-#define SIZE_VALUES 256
-#define SIZE_BUFFER 0x1000
-
-#define LOG_TO_FILE 0
-#define MEASURE_EXECUTION_TIME 0
-
-//=======================================================================
 // Global variables
 gsl_matrix *rotationAndTranslation = NULL;	// Rotation matrix shared by the android server and the application server
-mode modeUsed;
+Configuration *configuration;
+BroadcastMessage *broadcastMessage;
 
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
@@ -57,17 +49,11 @@ mode modeUsed;
 // http://www.x-io.co.uk/gait-tracking-with-x-imu/
 // http://www.x-io.co.uk/open-source-imu-and-ahrs-algorithms/ <= Source code available
 
-
-// TODO
-/*
- * Improve reception - Using a cable less packets are lost?
- * Convert to physic units! => Almost done...
- * Basic integration. Show drift error in position
- * Get information from the magnetometer
- * Read imu and ahrs algorithms
- */
-
 int main(int argc, char **argv){
+	//=======================================================================
+	// Program variables allocation
+	configuration = malloc(sizeof(configuration));
+	broadcastMessage = malloc(sizeof(broadcastMessage));
 
 	//=======================================================================
 	// Connection variables
@@ -93,7 +79,8 @@ int main(int argc, char **argv){
 	if(strcmp(argv[1],"TCP")==0){
 		// TCP mode
 		printf("TCP mode chosen\n");
-		modeUsed = TCP;
+
+		configuration->mode = TCP;
 
 		// Get portAndroid number
 		if(sscanf(argv[2],"%d",&portAndroid)!=1){
@@ -104,7 +91,7 @@ int main(int argc, char **argv){
 	else if(strcmp(argv[1],"BT")==0){
 		// BT mode
 		printf("BT mode chosen\n");
-		modeUsed = BLUETOOTH;
+		configuration->mode = BLUETOOTH;
 
 	}
 	else{
@@ -148,7 +135,7 @@ int main(int argc, char **argv){
 
 	//---TCP MODE------------------------------------------------------------
 	int listenSocketAndroid=-1;
-	if(modeUsed==TCP){	// Create TCP socket for the program
+	if(configuration->mode==TCP){	// Create TCP socket for the program
 		// Listen socket for Android
 		listenSocketAndroid = socket(PF_INET,SOCK_STREAM,0);
 		if(listenSocketAndroid==-1){
@@ -183,7 +170,7 @@ int main(int argc, char **argv){
 
 	//---BLUETOOTH MODE------------------------------------------------------
 	int socketBluetooth=-1;
-	if(modeUsed==BLUETOOTH){
+	if(configuration->mode==BLUETOOTH){
 		// Get port number of the application with sdp
 		uint8_t svc_uuid_int[] = {	0x2f, 0xa7, 0xbe, 0xb1,
 									0x6a, 0xcf,
@@ -308,11 +295,11 @@ int main(int argc, char **argv){
 		int maxFd = listenSocketApplication;
 		FD_SET(listenSocketApplication,&rdSet);
 
-		if(modeUsed==TCP){
+		if(configuration->mode==TCP){
 			FD_SET(listenSocketAndroid,&rdSet);
 			maxFd = maxFd>listenSocketAndroid? maxFd: listenSocketAndroid ;
 		}
-		if(modeUsed==BLUETOOTH){
+		if(configuration->mode==BLUETOOTH){
 			FD_SET(socketBluetooth,&rdSet);
 			maxFd = maxFd>socketBluetooth? maxFd : socketBluetooth;
 		}
@@ -344,7 +331,7 @@ int main(int argc, char **argv){
 			}
 
 		}
-		if((modeUsed==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
+		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
 			// accept a new Android connection
 			struct sockaddr_in fromAddrAndroid;
 			socklen_t len=sizeof(fromAddrAndroid);
@@ -360,7 +347,7 @@ int main(int argc, char **argv){
 
 		}
 
-		if(modeUsed==BLUETOOTH){
+		if(configuration->mode==BLUETOOTH){
 			if(FD_ISSET(socketBluetooth,&rdSet)){
 				processingThread(socketBluetooth,logfile);
 			}
@@ -371,10 +358,10 @@ int main(int argc, char **argv){
 
 	//---- close listen socket ----
 	close(listenSocketApplication);
-	if(modeUsed==TCP){
+	if(configuration->mode==TCP){
 		close(listenSocketAndroid);
 	}
-	if(modeUsed==BLUETOOTH){
+	if(configuration->mode==BLUETOOTH){
 		close(socketBluetooth);
 	}
 
@@ -386,6 +373,8 @@ int main(int argc, char **argv){
 	if(LOG_TO_FILE){
 	  fclose(logfile);
 	}
+	free(configuration);
+	free(broadcastMessage);
 	return EXIT_SUCCESS;
 }
 
@@ -481,7 +470,7 @@ void processingThread(int dialogSocket, FILE *logfile){
 			double timeValue;
 			long frameID;
 
-			if((*sliding_pointer!='G')&&(*sliding_pointer!='S')){
+			if((*sliding_pointer!='G')&&(*sliding_pointer!='S')&&(*sliding_pointer!='C')){
 				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
 				exit(EXIT_FAILURE);
 			}
@@ -497,8 +486,30 @@ void processingThread(int dialogSocket, FILE *logfile){
 				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
 				exit(EXIT_FAILURE);
 			}
+			if(sensorType=='C'){
+				// Commands, sent to this application or to be broadcasted
+				int id = (int)values[0];
+				if(id<1024){
+					// Commands with id inferior to 1024 are sent to this program
+					switch (id) {
+						case 1:
+							configuration->filterEnabled = !configuration->filterEnabled;
+							fprintf(stderr,"Filtering: %d\n",(int)configuration->filterEnabled);
+							break;
+						default:
+							fprintf(stderr,"Erroneous command ID: %d\n",id);
+							break;
+					}
+				}
+				else{
+					// id>=1024 are broadcasted to application
+					broadcastMessage->mesageAvailable = true;
+					broadcastMessage->message = id;
 
-			if(sensorType=='G'){
+				}
+			}
+
+			else if(sensorType=='G'){
 
 				if(counter_gyro<SIZE_VALUES){
 					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
@@ -524,20 +535,30 @@ void processingThread(int dialogSocket, FILE *logfile){
 					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
 					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
 
+					double  alpha_pos_delta,
+							beta_pos_delta,
+							gamma_pos_delta;
 
-					double 	alpha_filtered,
-							beta_filtered,
-							gamma_filtered;
+					if(configuration->filterEnabled){
+						double 	alpha_filtered,
+								beta_filtered,
+								gamma_filtered;
 
-					alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
-					beta_filtered = FIRfilter(beta_vel,firCoefs,32);
-					gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
+						alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
+						beta_filtered = FIRfilter(beta_vel,firCoefs,32);
+						gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
 
-
-					// Integrate to calculate the instantaneous rotation
-					double alpha_pos_delta = alpha_filtered*timeValue;
-					double beta_pos_delta = beta_filtered*timeValue;
-					double gamma_pos_delta = gamma_filtered*timeValue;
+						// Integrate to calculate the instantaneous rotation
+						alpha_pos_delta = alpha_filtered*timeValue;
+						beta_pos_delta = beta_filtered*timeValue;
+						gamma_pos_delta = gamma_filtered*timeValue;
+					}
+					else {
+						// only integrate last velocity value
+						alpha_pos_delta = alpha_vel[0]*timeValue;
+						beta_pos_delta = beta_vel[0]*timeValue;
+						gamma_pos_delta = gamma_vel[0]*timeValue;
+					}
 
 					//Calculate rotation matrices
 					// Be aware that the axis from the telephone and the axis for the application are not
@@ -628,7 +649,7 @@ void processingThread(int dialogSocket, FILE *logfile){
 
 			}
 			else{
-				printf("Wrong sensor type: %c\n",sensorType);
+				fprintf(stderr,"Wrong sensor type: %c\n",sensorType);
 			}
 
 			// jump to next line
@@ -671,11 +692,25 @@ void * applicationThread(void * arg){
 	for(;;){
 		// Get ask msg from the client
 		char buffer[SIZE_VALUES];
+		char broadcastBuffer[SIZE_VALUES];
 		int nb=recv(socket,buffer,SIZE_VALUES,0);
 		if(nb<=0){
 			break;
 		}
 		buffer[nb]='\0';
+
+		// Before, check and broadcast if available
+		if(broadcastMessage->mesageAvailable){
+			nb = sprintf(broadcastBuffer,"COM:%d\n",broadcastMessage->message);
+			if(send(socket,broadcastBuffer,nb,0)==-1){
+							perror("sendThreadBroadcast");
+							exit(1);
+				}
+			broadcastMessage->mesageAvailable=false;
+		}
+
+
+		// Then answer query
 		//printf("%s\n",buffer);
 		if(strncmp(buffer,"GETMAT",6)==0){
 			// Send rotationAndTranslation matrix to the client. Only the useful data!
