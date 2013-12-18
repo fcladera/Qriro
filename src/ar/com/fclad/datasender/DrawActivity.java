@@ -3,6 +3,7 @@ package ar.com.fclad.datasender;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.FeatureInfo;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -18,6 +19,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.Window;
 
 public class DrawActivity extends Activity implements SensorEventListener{
 	
@@ -30,8 +32,8 @@ public class DrawActivity extends Activity implements SensorEventListener{
 	GestureDetector gestureDetector;
 	
 	// Command codes sent to dataProcessor
-	private static final int COMMAND_TOGGLE_FILTER = 0x10;
-	private static final int COMMAND_DOUBLE_TAP = 0x11;
+	private static final int COMMAND_TOGGLE_FILTER = 1;	// Command to dataProcessor
+	private static final int COMMAND_DOUBLE_TAP = 1+1024;	// Command broadcasted to application
 	
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
