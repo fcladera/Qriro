@@ -33,7 +33,7 @@
 #include "fifo.h"
 #include "dataProcessor.h"
 
-// TODO server should be able to disconnect and reconnect
+// TODO Recalibrate on demand!
 
 //=======================================================================
 // Global variables
@@ -41,6 +41,7 @@ gsl_matrix *rotationAndTranslation = NULL;	// Rotation matrix shared by the andr
 Configuration *configuration;
 BroadcastMessage *broadcastMessage;
 
+volatile bool socketSet = false;
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -331,7 +332,7 @@ int main(int argc, char **argv){
 			}
 
 		}
-		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
+		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)&&(socketSet==false)){
 			// accept a new Android connection
 			struct sockaddr_in fromAddrAndroid;
 			socklen_t len=sizeof(fromAddrAndroid);
@@ -343,17 +344,31 @@ int main(int argc, char **argv){
 			printf("Android TCP connection %s:%d\n",
 			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
-			processingThread(dialogSocket,logfile);
-
-		}
-
-		if(configuration->mode==BLUETOOTH){
-			if(FD_ISSET(socketBluetooth,&rdSet)){
-				processingThread(socketBluetooth,logfile);
+			pthread_t thread;
+			Connection * connection = malloc(sizeof(Connection));
+			connection->socket=dialogSocket;
+			connection->logFile = logfile;
+			socketSet = true;
+			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
+			if(createThread!=0){
+				fprintf(stderr,"Error on thread creation\n");
+				exit(1);
 			}
-
 		}
 
+		if((configuration->mode==BLUETOOTH)&&(FD_ISSET(socketBluetooth,&rdSet))&&(socketSet==false)){
+			pthread_t thread;
+			Connection * connection = malloc(sizeof(Connection));
+			connection->socket=socketBluetooth;
+			connection->logFile = logfile;
+			socketSet = true;
+			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
+			if(createThread!=0){
+				fprintf(stderr,"Error on thread creation\n");
+				exit(1);
+
+			}
+		}
 	}
 
 	//---- close listen socket ----
@@ -378,9 +393,17 @@ int main(int argc, char **argv){
 	return EXIT_SUCCESS;
 }
 
-void processingThread(int dialogSocket, FILE *logfile){
+void *processingThread(void * arg){
+	//
+	broadcastMessage->mesageAvailable = true;
+	broadcastMessage->message = START_THREAD;
+
 	//=======================================================================
 	// Program Variables
+	Connection * connection = (Connection *)arg;
+	int dialogSocket = connection->socket;
+	FILE * logfile = connection->logFile;
+	free(connection);
 
 	// Screen vectors (velocity)
 	double 	x_vel[SIZE_VALUES],
@@ -488,11 +511,11 @@ void processingThread(int dialogSocket, FILE *logfile){
 			}
 			if(sensorType=='C'){
 				// Commands, sent to this application or to be broadcasted
+				// Read dataProcessor.h
 				int id = (int)values[0];
 				if(id<1024){
-					// Commands with id inferior to 1024 are sent to this program
 					switch (id) {
-						case 1:
+						case TOGGLE_FILTER:
 							configuration->filterEnabled = !configuration->filterEnabled;
 							fprintf(stderr,"Filtering: %d\n",(int)configuration->filterEnabled);
 							break;
@@ -501,11 +524,13 @@ void processingThread(int dialogSocket, FILE *logfile){
 							break;
 					}
 				}
-				else{
-					// id>=1024 are broadcasted to application
+				else if(id<2048){
 					broadcastMessage->mesageAvailable = true;
 					broadcastMessage->message = id;
 
+				}
+				else{
+					fprintf(stderr,"Received ID: %d>2048 from phone\n",id);
 				}
 			}
 
@@ -523,6 +548,8 @@ void processingThread(int dialogSocket, FILE *logfile){
 					gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
 					counter_gyro++;
 					printf("Gyro Calibrated...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
+					broadcastMessage->mesageAvailable = true;
+					broadcastMessage->message = CALIBRATION_END;
 					//printfifo(alpha_vel,SIZE_VALUES);
 				}
 				else{
@@ -683,6 +710,8 @@ void processingThread(int dialogSocket, FILE *logfile){
 	gsl_matrix_free(rot_matrix);
 	gsl_matrix_free(RxRy);
 	gsl_matrix_free(instantaneous_rotation);
+	socketSet = false;
+	return (void *)0;
 }
 
 void * applicationThread(void * arg){
@@ -701,7 +730,7 @@ void * applicationThread(void * arg){
 
 		// Before, check and broadcast if available
 		if(broadcastMessage->mesageAvailable){
-			nb = sprintf(broadcastBuffer,"COM:%d\n",broadcastMessage->message);
+			nb = sprintf(broadcastBuffer,"COM:%d;\n",broadcastMessage->message);
 			if(send(socket,broadcastBuffer,nb,0)==-1){
 							perror("sendThreadBroadcast");
 							exit(1);

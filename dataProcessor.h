@@ -25,7 +25,7 @@ double toDegrees(double);
 void printMatrix(gsl_matrix * A);
 void howToUse();
 
-void processingThread(int dialogSocket, FILE *logfile);
+void *processingThread(void * arg);
 void *applicationThread(void * arg);
 
 //=======================================================================
@@ -42,10 +42,25 @@ typedef struct configuration{
 	volatile bool filterEnabled;	// enable gyro filtering
 } Configuration;
 
+typedef struct connection{
+	int socket;
+	FILE * logFile;
+} Connection;
+
 typedef struct broadcastMessage{
 	volatile bool mesageAvailable;
 	int message;
 
 } BroadcastMessage;
+
+//=======================================================================
+// Messages
+// Messages with ID from 1 to 1024 are sent from the phone to dataProcessor, and are not broadcasted to the application
+#define TOGGLE_FILTER 1
+// Messages with ID  from 1025 to 2048 are sent from the phone to the application and are broadcasted to the application
+#define DOUBLE_TAP 1024+1
+// Messages with ID bigger than 2049 are sent from dataProcessor to the application
+#define START_THREAD 2048+1
+#define CALIBRATION_END 2048+2
 
 #endif /* SIMPLE_TCP_SERVER_H_ */
