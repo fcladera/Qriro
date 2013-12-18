@@ -1,6 +1,5 @@
 package ar.com.fclad.datasender;
 
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -13,17 +12,26 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
-public class DrawActivity extends Activity implements SensorEventListener {
+public class DrawActivity extends Activity implements SensorEventListener{
 	
 	public static final String TAG = "DrawActivity";
 	private SensorManager sensorManager;
 	private float timestampGyro;
 	private static final float NS2S = 1.0f / 1000000000.0f;
 	private int mode;
+	
+	GestureDetector gestureDetector;
+	
+	// Command codes sent to dataProcessor
+	private static final int COMMAND_TOGGLE_FILTER = 0x10;
+	private static final int COMMAND_DOUBLE_TAP = 0x11;
 	
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -51,6 +59,24 @@ public class DrawActivity extends Activity implements SensorEventListener {
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {		
 	}
+	
+	private void sendMessage(String origin, String message){
+		if(mode==MainActivity.BLUETOOTH_CONNECTION_MODE){
+			Intent sendmsg = new Intent(this,BluetoothServerService.class);
+			sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
+			sendmsg.putExtra(BluetoothServerService.ORIGIN, origin);
+			sendmsg.putExtra(BluetoothServerService.MSG, message);
+			startService(sendmsg);
+		}
+		if(mode==MainActivity.TCP_CONNECTION_MODE){
+			Intent sendmsg = new Intent(this,TCPclientService.class);
+			sendmsg.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
+			sendmsg.putExtra(TCPclientService.ORIGIN, origin);
+			sendmsg.putExtra(TCPclientService.MSG, message);
+			startService(sendmsg);
+		}
+		
+	}
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
@@ -67,27 +93,44 @@ public class DrawActivity extends Activity implements SensorEventListener {
 			
 				timestampGyro = event.timestamp;
 	
-				String str = dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2];
-				if(mode==MainActivity.BLUETOOTH_CONNECTION_MODE){
-					Intent sendmsg = new Intent(this,BluetoothServerService.class);
-					sendmsg.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
-					sendmsg.putExtra(BluetoothServerService.ORIGIN, "G");
-					sendmsg.putExtra(BluetoothServerService.MSG, str);
-					startService(sendmsg);
-				}
-				if(mode==MainActivity.TCP_CONNECTION_MODE){
-					Intent sendmsg = new Intent(this,TCPclientService.class);
-					sendmsg.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
-					sendmsg.putExtra(TCPclientService.ORIGIN, "G");
-					sendmsg.putExtra(TCPclientService.MSG, str);
-					startService(sendmsg);
-				}
+				String message = dT+":"+event.values[0]+":"+event.values[1]+":"+event.values[2];
+				sendMessage("G", message);
 				
 			}
-			
-			
 		}	
 		
+	}
+	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.draw, menu);
+		return true;
+	}
+	
+	public boolean onOptionsItemSelected(MenuItem item){
+		switch (item.getItemId()) {
+		case R.id.toggle_filtering:
+			String msg = "0:"+COMMAND_TOGGLE_FILTER+":0:0";
+			if(mode==MainActivity.BLUETOOTH_CONNECTION_MODE){
+	    		  Intent msgIntent = new Intent(this, BluetoothServerService.class);
+		    	  msgIntent.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
+		    	  msgIntent.putExtra(BluetoothServerService.ORIGIN, "C");
+		    	  msgIntent.putExtra(BluetoothServerService.MSG,msg);
+		    	  startService(msgIntent);
+	    	  }
+	    	  if(mode==MainActivity.TCP_CONNECTION_MODE){
+	    		  Intent msgIntent = new Intent(this, TCPclientService.class);
+		    	  msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
+		    	  msgIntent.putExtra(TCPclientService.ORIGIN, "C");
+		    	  msgIntent.putExtra(TCPclientService.MSG,msg);
+		    	  startService(msgIntent);
+	    	  }
+			break;
+
+		default:
+			break;
+		}
+		return true;
 	}
 	
 	class DrawView extends View {
@@ -102,6 +145,7 @@ public class DrawActivity extends Activity implements SensorEventListener {
 		  
 		  private float scaledValue = 1.0f;
 		  private ScaleGestureDetector scaleGestureDetector;
+		  private GestureDetector gestureDetector;
 		  private static final float sensibilityGesture = 0.01f;
 		  
 		  private Paint paint;
@@ -110,6 +154,7 @@ public class DrawActivity extends Activity implements SensorEventListener {
 		  public DrawView(Context context) {
 		    super(context);
 		    scaleGestureDetector = new ScaleGestureDetector(context, new ScaleListener());
+		    gestureDetector = new GestureDetector(context, new GestureListener());
 		    setFocusable(true);
 		    paint = new Paint();
 		    paint.setStrokeWidth(6);
@@ -117,8 +162,6 @@ public class DrawActivity extends Activity implements SensorEventListener {
 		    paint.setStyle(Paint.Style.FILL_AND_STROKE);
 		    paint.setAntiAlias(true);
 		    paint.setStrokeJoin(Paint.Join.BEVEL);
-		    
-		   
 		  }
 
 		  @Override
@@ -135,6 +178,7 @@ public class DrawActivity extends Activity implements SensorEventListener {
 			  int pointerID = event.getPointerId(pointerIndex);
 			
 			  scaleGestureDetector.onTouchEvent(event);
+			  gestureDetector.onTouchEvent(event);
 			  if(!isScaling){
 				  if(pointerID == 0){
 					  x = event.getX();
@@ -145,50 +189,38 @@ public class DrawActivity extends Activity implements SensorEventListener {
 					      oldY = y;
 					      return true;
 					    case MotionEvent.ACTION_MOVE:
-					      float deltaX = x-oldX;
-					      float deltaY = y-oldY;
-					      
-					     String line = "0:";
-					     if((Math.abs(deltaX)> sensibilityFinger)&&(Math.abs(deltaY) > sensibilityFinger)){
-					    	 //Log.w("DrawView",deltaX>0 ? "MoveRight" : "MoveLeft");
-					    	 line += deltaX+":"+deltaY;
-					     }
-					     else if(Math.abs(deltaX)> sensibilityFinger){
-					    	 line += deltaX+":"+0;
-					     }
-					     
-					     else if(Math.abs(deltaY) > sensibilityFinger){
-					    	// Log.w("DrawView", deltaY> 0 ? "MoveDown" : "MoveUp");
-					    	 line += 0+":"+deltaY;
-					     }
-					     else{
-					    	 return false;
-					     }
-					     
-					     line += ":"+0;
-					     //Log.w("DrawView",line);
-					     
-					     //Intent msgIntent = new Intent(getContext(),TCPclientService.class);
-					     if(mode==MainActivity.BLUETOOTH_CONNECTION_MODE){
-					    	 Intent bluetoothIntent = new Intent(getContext(),BluetoothServerService.class);
-						     bluetoothIntent.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
-						     bluetoothIntent.putExtra(BluetoothServerService.ORIGIN, "S");
-						     bluetoothIntent.putExtra(BluetoothServerService.MSG,line);
-					    	 getContext().startService(bluetoothIntent);
-					     }
-					     if(mode==MainActivity.TCP_CONNECTION_MODE){
-					    	 Intent tcpIntent = new Intent(getContext(),TCPclientService.class);
-						     tcpIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
-						     tcpIntent.putExtra(TCPclientService.ORIGIN, "S");
-						     tcpIntent.putExtra(TCPclientService.MSG,line);
-					    	 getContext().startService(tcpIntent);
-					     }
-					      oldX = x;
-					      oldY = y;
-					      break;
+					    	float deltaX = x-oldX;
+						    float deltaY = y-oldY;
+						      
+						     String message = "0:";
+						     if((Math.abs(deltaX)> sensibilityFinger)&&(Math.abs(deltaY) > sensibilityFinger)){
+						    	 //Log.w("DrawView",deltaX>0 ? "MoveRight" : "MoveLeft");
+						    	 message += deltaX+":"+deltaY;
+						     }
+						     else if(Math.abs(deltaX)> sensibilityFinger){
+						    	 message += deltaX+":"+0;
+						     }
+						     
+						     else if(Math.abs(deltaY) > sensibilityFinger){
+						    	// Log.w("DrawView", deltaY> 0 ? "MoveDown" : "MoveUp");
+						    	 message += 0+":"+deltaY;
+						     }
+						     else{
+						    	 return false;
+						     }
+						     
+						     message += ":"+0;
+						     //Log.w("DrawView",line);
+						     
+						     sendMessage("S", message);
+						    
+						      oldX = x;
+						      oldY = y;
+						      break;
 					    case MotionEvent.ACTION_UP:
 					      // nothing to do
 					      break;
+					      
 					    default:
 					      return false;
 					  }  
@@ -197,6 +229,20 @@ public class DrawActivity extends Activity implements SensorEventListener {
 			 
 		    invalidate();
 		    return true;
+		  }
+		  
+		  private class GestureListener extends 
+		  		GestureDetector.SimpleOnGestureListener{
+
+			@Override
+			public boolean onDoubleTap(MotionEvent e) {
+				Log.d(TAG,"DoubleTap");
+				String message = "0:"+COMMAND_DOUBLE_TAP+":0:0";
+				sendMessage("C", message);
+				return super.onDoubleTap(e);
+			}
+			  
+			  
 		  }
 
 		  private class ScaleListener extends
@@ -213,24 +259,9 @@ public class DrawActivity extends Activity implements SensorEventListener {
 		    		  circleRadius = 1;
 		    	  //Log.w("DrawView",""+deltaScale);
 		    	  
-		    	  String msg = "0:0:0:"+deltaScale;
-		    	  
-		    	  //Intent msgIntent = new Intent(getContext(), TCPclientService.class);
-		    	  if(mode==MainActivity.BLUETOOTH_CONNECTION_MODE){
-		    		  Intent msgIntent = new Intent(getContext(), BluetoothServerService.class);
-			    	  msgIntent.putExtra(BluetoothServerService.COMMAND, BluetoothServerService.SENDMSG);
-			    	  msgIntent.putExtra(BluetoothServerService.ORIGIN, "S");
-			    	  msgIntent.putExtra(BluetoothServerService.MSG,msg);
-			    	  getContext().startService(msgIntent);
-		    	  }
-		    	  if(mode==MainActivity.TCP_CONNECTION_MODE){
-		    		  Intent msgIntent = new Intent(getContext(), TCPclientService.class);
-			    	  msgIntent.putExtra(TCPclientService.COMMAND, TCPclientService.SENDMSG);
-			    	  msgIntent.putExtra(TCPclientService.ORIGIN, "S");
-			    	  msgIntent.putExtra(TCPclientService.MSG,msg);
-			    	  getContext().startService(msgIntent);
-		    	  }
-		    	  
+		    	  String message = "0:0:0:"+deltaScale;
+		    	  sendMessage("S", message);
+		    	
 		      }
 		      
 		      oldScale = scaledValue;
@@ -248,5 +279,4 @@ public class DrawActivity extends Activity implements SensorEventListener {
 		    }
 		  }
 		}
-	
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+     <!-- Strings related to MainActivity -->
     <string name="app_name">						DataSender					</string>
     <string name="action_settings">					Settings					</string>
     <string name="connect_tcp">						Connect TCP/Wi-Fi			</string>
@@ -21,11 +22,14 @@
     <string name="bluetooth_address">				Bluetooth Address			</string>
     <string name="modify_tcp_parameters">			Modify TCP parameters		</string>
         
-    <!-- Strings related to login -->
+    <!-- Strings related to ConfigureTCPActivity -->
     <string name="title_activity_configure_tcp">Configure TCP/Wi-Fi</string>
     <string name="configure_tcp_port">				TCP port - Default: 7777	</string>
     <string name="configure_ip_address">			IP address					</string>
     <string name="OK_button">						OK							</string>
     <string name="Cancel_button">					Cancel						</string>
     <string name="erroneous_ip">					ERROR on IP address			</string>
+    
+     <!-- Strings related to DrawActivity -->
+     <string name="toggle_filter">					Toggle rotation filter		</string>
 </resources>

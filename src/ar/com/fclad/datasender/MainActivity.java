@@ -263,12 +263,12 @@ public class MainActivity extends Activity implements SensorEventListener{
 			break;
 		case REQUEST_MODIFY_TCP_PARAMETERS:
 			if(resultCode == RESULT_OK){
-				if(data.hasExtra(ConfigureTCP.IP_ADDRESS)){
-					ServerIP = data.getExtras().getString(ConfigureTCP.IP_ADDRESS);
+				if(data.hasExtra(ConfigureTCPActivity.IP_ADDRESS)){
+					ServerIP = data.getExtras().getString(ConfigureTCPActivity.IP_ADDRESS);
 					Log.d(TAG,"New IP "+ServerIP);
 				}
-				if(data.hasExtra(ConfigureTCP.PORT)){
-					port = data.getExtras().getInt(ConfigureTCP.PORT);
+				if(data.hasExtra(ConfigureTCPActivity.PORT)){
+					port = data.getExtras().getInt(ConfigureTCPActivity.PORT);
 					Log.d(TAG,"New Port "+port);
 				}
 			}
@@ -379,7 +379,7 @@ public class MainActivity extends Activity implements SensorEventListener{
 		switch (item.getItemId()) {
 		case R.id.modify_tcp_parameters:
 			Log.d(TAG,"modifying tcp parameters");
-			Intent intent = new Intent(this,ConfigureTCP.class);
+			Intent intent = new Intent(this,ConfigureTCPActivity.class);
 			startActivityForResult(intent, REQUEST_MODIFY_TCP_PARAMETERS);
 			break;
 

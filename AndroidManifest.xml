@@ -51,7 +51,7 @@
         </service>
 
         <activity
-            android:name="ar.com.fclad.datasender.ConfigureTCP"
+            android:name="ar.com.fclad.datasender.ConfigureTCPActivity"
             android:label="@string/title_activity_configure_tcp"
             android:windowSoftInputMode="adjustResize|stateVisible" >
         </activity>
