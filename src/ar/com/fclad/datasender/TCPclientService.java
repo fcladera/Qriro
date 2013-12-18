@@ -18,11 +18,11 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class TCPclientService extends Service {
+	public static final String TAG = "TCPclientService";
+	
 	private Looper mServiceLooper;
 	private ServiceHandler mServiceHandler;
 	 
-	
-	
 	public static final String NOTIFICATION = "ar.com.fclad.datasender";
 	
 	public static final String COMMAND = "command";
@@ -30,6 +30,7 @@ public class TCPclientService extends Service {
 	public static final String PORT = "port";
 	public static final String MSG  = "msg";
 	public static final String ORIGIN = "origin";
+	public static final String STATUS = "status"; 
 	
 	// commands that can be sent to TCPclientService 
 	// through Intent.putExtra(TCPclientService.COMMAND, ...)
@@ -38,26 +39,26 @@ public class TCPclientService extends Service {
 	public static final int GETSTATUS = 2;
 	public static final int SENDMSG = 10;
 	
-	// Status response
-	public static final String STATUS = "status"; 
-	public static final int CONNECTED = 1;
-	public static final int DISCONNECTED = 0; 
+	// State response
+	public static final int STATE_CONNECTED = 2;
+	public static final int STATE_CONNECTING = 1;
+	public static final int STATE_NONE = 0; 
+	private static int state;
 
 	
 	private Socket socket;
-	PrintWriter writer = null;
-	private boolean isConnected = false;
+	private PrintWriter writer = null;
 	
 	private String server = null;
 	private int port = -1;
 	
-	private static final int timeout = 2000;
+	private static final int timeout = 1000;
 
 	private long msgId;
 	
 	
 	public TCPclientService() {
-		
+		state = STATE_NONE; //setStatus is not used to avoid double answer if service is not created
 	}
 
 	private final class ServiceHandler extends Handler {
@@ -68,21 +69,19 @@ public class TCPclientService extends Service {
 	    public void handleMessage(Message msg) {
 	    	switch(msg.getData().getInt(COMMAND)){
 	    	case CONNECT:
-	    		if(!isConnected){
+	    		if(state==STATE_NONE){
 	    			server = msg.getData().getString(SERVER);
 	    			port = msg.getData().getInt(PORT);
-	    			Log.d("TCPclienService","Connecting with server "+server+" port "+port);
+	    			Log.d(TAG,"Connecting with server "+server+" port "+port);
 	    			new Connect().execute(server);
 	    			
 	    		}
 	    		break;
 	    	case DISCONNECT:
-	    		if(isConnected){
-	    			Log.d("TCPclienService","Disconnecting from server");
-	    			disconnect();
-	    			
+	    		if((state==STATE_CONNECTED)||(state==STATE_CONNECTING)){
+	    			Log.d(TAG,"Disconnecting from server");
+	    			disconnect();	
 	    		}
-	    		stopSelf();	// Destroy service on disconnection
 	    			
 	    		break;
 	    	case SENDMSG:
@@ -94,17 +93,28 @@ public class TCPclientService extends Service {
 	    		return;
 	    		
 	    	case GETSTATUS:
-	    		Intent intent = new Intent(NOTIFICATION);
-	    		if(isConnected)
-	    			intent.putExtra(STATUS, CONNECTED);
-	    		else
-	    			intent.putExtra(STATUS, DISCONNECTED);
-	    		sendBroadcast(intent);
+	    		notifyState();
 	    	default:
 	    		break;
 	    	
 	    	}
 	    }
+	}
+	
+	private synchronized void setState(int s) {
+        Log.d(TAG, "State:\t" + state + " -> " + s);
+		state = s;
+	}
+	
+	public synchronized int getState() {
+	    return state;
+	}
+	
+	public void notifyState(){
+		Intent intent = new Intent(NOTIFICATION); 
+		intent.putExtra("TAG", TAG);
+		intent.putExtra(STATUS, getState());
+		sendBroadcast(intent);
 	}
 
 	private class Connect extends AsyncTask<String, Void, String>{
@@ -122,45 +132,42 @@ public class TCPclientService extends Service {
 				try {
 					socket.connect(serverAddr, timeout);
 					socket.setTcpNoDelay(true);
-					isConnected = true;
-					Intent intent = new Intent(NOTIFICATION); 
-					intent.putExtra(STATUS, CONNECTED);
-	    			sendBroadcast(intent);
+					setState(STATE_CONNECTING);
 				} catch (IOException e) {
 					//e.printStackTrace();
-					Log.e("Socket","Connection error");
-					isConnected = false;
-					Intent intent = new Intent(NOTIFICATION);
-					intent.putExtra(STATUS, DISCONNECTED);
-					sendBroadcast(intent);
-					
-					stopSelf();
+					Log.e(TAG,"Connection error");
+					setState(STATE_NONE);
 				}
 				return params[0];
 		}
 		
 		protected void onPostExecute(String result){
-			if(isConnected){
-				Toast.makeText(getApplicationContext(), "Successfully connected to "+result, Toast.LENGTH_SHORT).show();
+			if(state==STATE_CONNECTING){
+				notifyState();
+				Toast.makeText(getApplicationContext(), "Connecting to "+result, Toast.LENGTH_SHORT).show();
 				createWriterStream();
 			}
 			else{
 				Toast.makeText(getApplicationContext(), "Error connecting to "+result, Toast.LENGTH_SHORT).show();
-				stopSelf();
+				disconnect();
 			}
 		}
 		
 	}
 	
 	private void createWriterStream(){
-	try {
-		 writer = new PrintWriter(new BufferedWriter(
-				new OutputStreamWriter(socket.getOutputStream())),
-				true);
-	} catch (IOException e) {
-		e.printStackTrace();
-		Log.e("MainActivity", "Error on createWriterStream");
-	}
+		try {
+			 writer = new PrintWriter(new BufferedWriter(
+					new OutputStreamWriter(socket.getOutputStream())),
+					true);
+		} catch (IOException e) {
+			e.printStackTrace();
+			Log.e(TAG, "Error on createWriterStream");
+			disconnect();
+		}
+		setState(STATE_CONNECTED);
+		notifyState();
+		
 	}
 
 	private void destroyWriterStream(){
@@ -173,26 +180,22 @@ public class TCPclientService extends Service {
 			socket.close();
 			destroyWriterStream();
 		} catch (IOException e) {
-			Log.e("MainActivity", "Error on disconnect");
-			stopSelf();
+			Log.e(TAG, "Socket was not created?");
 			//e.printStackTrace();
 		}
-		isConnected = false;
 		socket = null;
-		Intent intent = new Intent(NOTIFICATION);
-		intent.putExtra(STATUS, DISCONNECTED);
-		sendBroadcast(intent);
+		setState(STATE_NONE);
+		notifyState();
+		stopSelf();
 	}
 
 	
 	public void onCreate() {
 		HandlerThread thread = new HandlerThread("TCPclientThread");
 		thread.start();
-		Log.w("TCPclientService","Service created");
+		Log.w(TAG,"Service created");
 		mServiceLooper = thread.getLooper();
 	    mServiceHandler = new ServiceHandler(mServiceLooper);
-	    
-
 	}
 	
 	@Override
@@ -202,20 +205,16 @@ public class TCPclientService extends Service {
 	
 	 @Override
 	  public int onStartCommand(Intent intent, int flags, int startId) {
-	    //Log.w("TCPclientService","Service started");
+	    //Log.w(TAG,"Service started");
 	    Message msg = mServiceHandler.obtainMessage();
 	    msg.arg1 = startId;
 	    msg.setData(intent.getExtras());
 	    mServiceHandler.sendMessage(msg);
-	    
-	    
-	    
+
 	    return Service.START_NOT_STICKY;
 	  }
 	 
 	 public void onDestroy(){
-		 Log.w("TCPclientService","Service destroyed");
-	 }
-
-	 
+		 Log.w(TAG,"Service destroyed");
+	 }	 
 }

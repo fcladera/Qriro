@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
+
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -24,7 +26,7 @@ import android.util.Log;
 public class BluetoothServerService extends Service {
 	private Looper mServiceLooper;
 	private ServiceHandler mServiceHandler;
-	private static final String TAG = "BluetoothServerService";
+	public static final String TAG = "BluetoothServerService";
 	
 	// Name for SDP
 	private static final String NAME = "DataSender";
@@ -35,10 +37,10 @@ public class BluetoothServerService extends Service {
 
 	// Connection state
 	private int state = STATE_NONE;
-    public static final int STATE_NONE = 0xF+0;       // we're doing nothing
-    public static final int STATE_LISTEN = 0xF+1;     // now listening for incoming connections
-    public static final int STATE_CONNECTING = 0xF+2; // now initiating an outgoing connection
-    public static final int STATE_CONNECTED = 0xF+3;  // now connected to a remote device
+    public static final int STATE_NONE = 0;       // we're doing nothing
+    public static final int STATE_LISTEN = 1;     // now listening for incoming connections
+    public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
+    public static final int STATE_CONNECTED = 3;  // now connected to a remote device
 	
 	// commands that can be sent to BluetoothServerService 
 	public static final int LISTEN = 1;
@@ -64,7 +66,7 @@ public class BluetoothServerService extends Service {
     private long msgId;
     
 	public BluetoothServerService() {
-		Log.d(TAG,"Constructor");
+		//Log.d(TAG,"Constructor");
 		
 	}
 	
@@ -118,9 +120,7 @@ public class BluetoothServerService extends Service {
 	    		return;
 	    		
 	    	case GETSTATUS:
-	    		Intent intent = new Intent(NOTIFICATION);
-	    		intent.putExtra(STATUS, getState());
-	    		sendBroadcast(intent);
+	    		notifyState();
 	    		break;
 	    	default:
 	    		Log.w(TAG,"Erroneous code: "+code);
@@ -144,7 +144,12 @@ public class BluetoothServerService extends Service {
 	
 	public void notifyState(){
 		Intent intent = new Intent(NOTIFICATION); 
-		intent.putExtra(STATUS, getState());
+		Bundle extras = new Bundle();
+		extras.putString("TAG", TAG);
+		extras.putInt(STATUS, getState());
+		//intent.put("TAG", TAG);
+		//intent.putExtra(STATUS, getState());
+		intent.putExtras(extras);
 		sendBroadcast(intent);
 	}
 	
