@@ -1,6 +1,17 @@
 package ar.com.fclad.processingEclipse;
 
 import java.awt.Color;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import processing.core.*;
@@ -14,68 +25,189 @@ public class MainClass extends PApplet{
 		PApplet.main(new String[] { "--present", "MyProcessingSketch" });
 	}
 
-	public int NUMSHAPES = 150; // the number of flying pyramids
-	public float MAXSPEED = 50; // the maximum speed at which a pyramid may move
+	public int NUMSHAPES = 5; // the number of flying pyramids
+	public float MAXSPEED = 5; // the maximum speed at which a pyramid may move
 
-	ArrayList <Pyramid> shapes = new ArrayList <Pyramid> (); // arrayList to store all the shapes
+	ArrayList <Diamond> shapes = new ArrayList <Diamond> (); // arrayList to store all the shapes
 	boolean bLights, 	
 			bWhitebackground=true, 
 			setPerspective; // booleans for toggling lights and background
 	
-	Pyramid testPyramid;
+	Diamond testDiamond;
+	CatchSphere catchSphere = null;
+	
+	//Client myClient;
+	private Cube cube = null;
+	String dataIn = null;
+	
+	private CatchToroid toroid;
+	
+	boolean connectionAvailable = true;
+	
+	CommunicationThread commThread;
+	
+	public MainClass() {
+		commThread = new CommunicationThread(this);
+		commThread.start();
+		
+	}
 
 	public void setup() {
-	  size(1280, 720, PGraphicsOpenGL.OPENGL); // use the P3D OpenGL renderer
-	  //noStroke(); // turn off stroke (for the rest of the sketch)
-	  smooth(6); // set smooth level 6 (default is 2)
-	  // create all the shapes with a certain radius and height
-	  
-	  /*for (int i=0; i<NUMSHAPES; i++) {
-	    float r = random(25, 200);
-	    float f = random(2, 5);
-	    shapes.add( new Pyramid(this, r) );
-	  }
-	  */
-	  testPyramid = new Pyramid(this, 150);
+		size(800, 800, PGraphicsOpenGL.OPENGL); // use the P3D OpenGL renderer
+		//hint(DISABLE_DEPTH_TEST);
+		//noStroke(); // turn off stroke (for the rest of the sketch)
+		smooth(6); // set smooth level 6 (default is 2)
+		// create all the shapes with a certain radius and height
+		
+		for (int i=0; i<NUMSHAPES; i++) {
+		  float r = random(25, 50);
+		  shapes.add( new Diamond(this, r) );
+		}
+		
+		
+		/*
+		float fov = (float) (PI/6.0);
+		float cameraZ = (float) ((height/2.0) / tan((float) (fov/2.0)));
+		perspective((float)fov, (float)width/(float)height, 
+		            (float)(cameraZ/10.0), (float)(cameraZ*10.0));
+		*/
+		
+		//testDiamond = new Diamond(this, 150);
+		
+		catchSphere = new CatchSphere(this
+		  ,commThread,100);
+		catchSphere.setZ((float) (-max(width,height)*1.5));
+		
+		cube = new Cube(this,commThread);
+		
+		toroid = new CatchToroid(this, commThread, 50, 120);
+		toroid.setZ((float) (-max(width,height)*1.5));
+		// Ask first rotation matrix
+		commThread.askNewRotationMatrix();
+//commThread.askNewRotationAngles();
+		  
 	}
 
 	public void draw() {
-	  background(bWhitebackground?255:0); // draw a white or black background
-	  if (bLights) { lights(); } // if true, use lights()
-	  if(setPerspective)
-		  perspective((float)(PI/3.0), (float) width/height, (float)1, (float)1000000); // perspective to see close shapes
-	  // update and display all the shapes
-	  
-	  pushMatrix();
-	  translate(width/2,height/2);
-	  rotateX((float)Math.PI/4);
-	  rotateY((float)Math.PI/4);
-	  rotateZ((float)Math.PI/4);
-	  fill(255);
-	  sphere(45);
-	  popMatrix();
-	  
-	  //testPyramid.update();
-	  testPyramid.display();
-	  /*
-	  for (Pyramid p : shapes) {
-	    p.update();
-	    p.display();
-	  }
-	  */
-	  
+		// Any active command?
+		int command = commThread.getCommand();
+		if(command!=0){
+			switch (command) {
+				
+			case CommunicationThread.COMMAND_DOUBLE_TAP:
+				System.out.println("Double tap");				
+				break;
+			case CommunicationThread.COMMAND_CALIBRATION_FINISHED:
+				System.out.println("Calibration finished");
+			case CommunicationThread.COMMAND_THREAD_START:
+				System.out.println("Begin data rcv");
+			default:
+				break;
+			}
+			commThread.setCommand(0); // ACK command
+		}
+		
+		
+		background(Color.BLACK.getRGB()); 
+		lights();
+		camera((float)(0.0), (float)(0.0), (float)(220.0), // eyeX, eyeY, eyeZ
+				(float)mouseX, (float)mouseY, (float)(0.0), // centerX, centerY, centerZ
+				(float)(0.0), (float)(1.0), (float)(0.0)); // upX, upY, upZ
+		
+		
+		//catchSphere.display();
+		stroke(0);
+		toroid.display();
+		noStroke();
+		
+		/*
+		pushMatrix();
+		fill(Color.RED.getRGB());
+		translate(mouseX, mouseY, -1600);
+		circle.drawPoints();;
+		popMatrix();
+		*/
+		//float[] cordinates = catchSphere.getAbsoluteCordinates();
+		//pushMatrix();
+		//translate(cordinates[0], cordinates[1], cordinates[2]);
+		//setMatrix(new PMatrix3D(1,0,0,cordinates[0],0,1,0,cordinates[1],0,0,1,cordinates[2],0,0,0,1));
+		//sphere(100);
+		//System.out.print(cordinates[0]+" "+cordinates[1]+" "+cordinates[2]+"\t");
+		//System.out.println(Math.sqrt(Math.pow(cordinates[0], 2)+Math.pow(cordinates[1], 2)+Math.pow(cordinates[2], 2))+"");
+		//popMatrix();
+	
+		//testDiamond.display();
+		
+		
+		for (Diamond d : shapes) {
+			d.display();
+			if(detectCapture(	//catch.getAbsoluteCordinates(),
+								//catchSphere.getRadius(),
+								toroid.getAbsoluteCordinates(),
+								toroid.getRadius(),								
+								d.getAbsoluteCordinates(),
+								d.getRadius())){
+				background(128);
+			}
+			d.update();
+		}
+		
+		//cube.display();
+
+		commThread.askNewRotationMatrix();
+
 	}
 
 	public void mousePressed() {
 	  if (mouseButton==LEFT) { bWhitebackground = !bWhitebackground; } // toggle between black/white background
-	  if (mouseButton==RIGHT) { bLights = !bLights; } // toggle the use of lights()
+	  	if (mouseButton==RIGHT){ 
+	  		bLights = !bLights; 
+	  		//commThread.write("Hello dude!");
+	  	} // toggle the use of lights()
 	  if (mouseButton == CENTER){
 		  setPerspective = !setPerspective;
 		  print(setPerspective+"\n");
-		  testPyramid.update();
 	  }
 	}
 	
+	private boolean detectCapture(float[] ballPos, float ballRad, float[] diamondPos, float diamondRad){
+		boolean isCaptured = true;
+		for(int i=0;i<3;i++){
+			if(abs(ballPos[i]-diamondPos[i])>(ballRad-diamondRad)){
+				isCaptured = false;
+				break;
+			}
+		}
+		return isCaptured;
+	}
+	
+	/*
+	public void clientEvent(Client myClient){
+		  dataIn = myClient.readStringUntil('\n'); 
+		  if(dataIn!=null){
+		    //println(dataIn);
+		    String[] list = splitTokens(dataIn,":;");
+		    //print(char(list[0]));
+		    if(list[0].equals("MAT")){
+		       //println("Processing matrix");
+		      int i=0;
+		      float[][] rotMatrix = new float[4][4];
+		      for(String str : list){
+		        //print(i+" : "+str+"\n");
+		        if(i!=0){
+		          int p=i-1;
+		          rotMatrix[p/4][p%4] = float(str);
+		          //println(p/4+" "+p%4);
+		        }
+		        i++;
+		        if(i>16) break;
+		         
+		      }
+		      cube.setRotationMatrix(rotMatrix);
+		    }
+		  }
+		  //myClient.write("OK");
+		}*/
 	/*
 	// EJEMPLO DE CUADROS 2D
 	 

@@ -1,6 +1,7 @@
 package ar.com.fclad.processingEclipse;
 
 import processing.core.PApplet;
+import processing.core.PMatrix3D;
 
 public class Cube {
 
@@ -86,7 +87,7 @@ public class Cube {
 	    gamma+= angleChangeConstant;
 	  }
 	  
-	  public void drawCube(){
+	  public void display(){
 	    parent.stroke(0);
 	    //noFill();
 	    parent.fill(123);
@@ -95,11 +96,21 @@ public class Cube {
 	    //rotateY(beta);
 	    //rotateZ(gamma);
 	    
-	  
-	    parent.setMatrix(commThread.getRotationTranslationMatrix());
-	    //scale(1,-1);
-	    // usar scale en vez de el tamaño
-	    parent.box(z_pos);
+	    /*
+	   float[] angles = new float[3];
+	   
+	   angles = commThread.getRotationAngles();
+	   parent.translate(parent.width/2, parent.height/2);
+	   parent.rotateX(angles[0]);
+	   parent.rotateY(angles[1]);
+	   parent.rotateZ(angles[2]);
+	   */
+	   
+	   PMatrix3D rotTransMatr = commThread.getRotationTranslationMatrix();
+	   parent.setMatrix(rotTransMatr);
+	   //scale(1,-1);
+	   // usar scale en vez de el tamaño
+	   parent.box(100);
 
 	  }
 }

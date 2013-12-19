@@ -9,9 +9,9 @@ public class Diamond {
 	private int[] c = new int[nbPoints]; // the colors for each coordinate
 	private float pHeight, pRadius; // the height and base radius of the shape
 	private float speed, transparency; // the movement speed and the color transparency
-	private float 	x=400, 
-					y=300, 
-					z=0; // the position of the shape as a whole
+	private float 	x=100, 
+					y=100, 
+					z=-1000; // the position of the shape as a whole
 	
 	
 	
@@ -25,13 +25,8 @@ public class Diamond {
 	    reset(); // randomly set the x and y position of the shape as a whole and the colors of the shape
 	}
 	
-	public float[] getPositionAndRadius(){
-		float[] position = new float[4];
-		position[0] = x;
-		position[1] = y;
-		position[2] = z;
-		position[3] = pRadius;
-		return position;
+	public float getRadius(){
+		return pRadius;
 	}
 	
 	public void destroyDiamond(){
@@ -63,9 +58,12 @@ public class Diamond {
 	    parent.pushMatrix(); // use push/popMatrix so each Shape's translation/rotation does not affect other drawings
 
 	    // move and rotate the shape as a whole    
-	    parent.translate(x, y, z); // translate to the position of the shape
-	    parent.rotateY((float)(x + parent.frameCount*0.01)); // rotate around the Y axis based on the x position and frameCount
-	    parent.rotateX((float)(y + parent.frameCount*0.02)); // rotate around the X axis based on the y position and frameCount
+	    //parent.translate(x, y, z); // translate to the position of the shape
+	    
+	    PMatrix3D positionMatrix = new PMatrix3D(1,0,0,x,0,1,0,y,0,0,1,z,0,0,0,1);
+	    positionMatrix.rotateY((float)(x + parent.frameCount*0.01)); // rotate around the Y axis based on the x position and frameCount
+	    positionMatrix.rotateX((float)(y + parent.frameCount*0.02)); // rotate around the X axis based on the y position and frameCount
+	    parent.setMatrix(positionMatrix);
 	    
 	    // draw the 4 side triangles of the pyramid, each connected to the top of the pyramid
 	    parent.beginShape(PConstants.TRIANGLE_FAN); // TRIANGLE_FAN is suited for this, it starts with the center point c[0]
@@ -101,14 +99,16 @@ public class Diamond {
 	    */
 	    
 	    parent.popMatrix(); // use push/popMatrix so each Shape's translation/rotation does not affect other drawings
+	    //this.x = parent.mouseX-parent.width/2;
+	    //this.y = parent.mouseY-parent.height/2;
 	  }
 
 	  // randomly sets the xy position of the shape as a whole and the colors of the shape  
 	  void reset() {
-	    //x = parent.random(-2*parent.width, 3*parent.width); // set the x position
-	    //y = parent.random(-parent.height, 2*parent.height); // set the y position
-		  x = parent.width/2+100;
-		  y = parent.height/2+100;
+		  x = parent.random((float)(-parent.width/2*.7), (float) (parent.width/2*.7)); // set the x position
+		  y = parent.random((float)(-parent.height/2*.7), (float)(parent.height/2*.7)); // set the y position
+		  //x = parent.width/2+100;
+		  //y = parent.height/2+100;
 		  c[0] = parent.color(parent.random(150, 255), parent.random(150, 255), parent.random(150, 255)); // set the top color (a bit lighter)
 		  c[nbPoints-1] = parent.color(parent.random(150, 255), parent.random(150, 255), parent.random(150, 255)); // set the top color (a bit lighter)
 	    // randomly set the 4 colors in the base of the shape
@@ -116,4 +116,9 @@ public class Diamond {
 	      c[i] = parent.color(parent.random(255), parent.random(255), parent.random(255)); // random RGB color
 	    }
 	  }
+
+	public float[] getAbsoluteCordinates() {
+		float[] cordinates = {x,y,z};
+		return cordinates;
+	}
 }
