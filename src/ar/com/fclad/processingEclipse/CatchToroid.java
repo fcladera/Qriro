@@ -18,33 +18,27 @@ public class CatchToroid extends CatchObject{
 
 	private int pts = 40; 
 	private float angle = 0;
-	private float internalRadius = 60;
+	private float externalRadius = 40;
 
 	// lathe segments
 	private int segments = 60;
 	private float latheAngle = 0;
-	private float externalRadius = 100;
+	private float radius = 100;
 	
 	//vertices
 	PVector vertices[], vertices2[];
 	
-	public CatchToroid(PApplet p, CommunicationThread commtThread, float intRadius, float extRadius) {
+	public CatchToroid(PApplet p, CommunicationThread commtThread, float radius) {
 		super(p, commtThread);
-		changeRadius(intRadius, extRadius);
+		changeRadius(radius);
 	}
 	
-	public void changeRadius(float intRadius, float extRadius){
-		this.internalRadius = intRadius;
-		if(extRadius>(intRadius+10)){
-			this.externalRadius = extRadius;
-		}
-		else{
-			this.externalRadius = this.internalRadius+10;
-		}
+	public void changeRadius(float radius){
+		this.radius = radius;
 	}
 	
 	public float getRadius(){
-		return (internalRadius+externalRadius)/2;
+		return radius-externalRadius/2;
 	}
 
 	public void display(){
@@ -57,8 +51,8 @@ public class CatchToroid extends CatchObject{
 		for(int i=0; i<=pts; i++){
 			vertices[i] = new PVector();
 			vertices2[i] = new PVector();
-			vertices[i].x = (float) (externalRadius + Math.sin(Math.toRadians(angle))*internalRadius);
-			vertices[i].z = (float) (Math.cos(Math.toRadians(angle))*internalRadius);
+			vertices[i].x = (float) (radius + Math.sin(Math.toRadians(angle))*externalRadius);
+			vertices[i].z = (float) (Math.cos(Math.toRadians(angle))*externalRadius);
 			angle+=360.0/pts;
 		}
 		
