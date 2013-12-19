@@ -29,7 +29,7 @@ public class MainClass extends PApplet{
 	// Shared variables
 	
 	private CommunicationThread commThread; 
-	private boolean calibrated=false;
+	private boolean calibrated=true;
 	PFont f;
 	
 	//=======================================================================
@@ -104,7 +104,7 @@ public class MainClass extends PApplet{
 		//=======================================================================
 		// Cube program
 		
-		cube = new Cube(this,commThread);
+		cube = new Cube(this,commThread,60);
 		
 		//=======================================================================
 		// Land program
@@ -122,7 +122,8 @@ public class MainClass extends PApplet{
 			switch (command) {
 				
 			case CommunicationThread.COMMAND_DOUBLE_TAP:
-				System.out.println("Double tap");				
+				System.out.println("Double tap");
+				changeApplication();
 				break;
 			case CommunicationThread.COMMAND_CALIBRATION_FINISHED:
 				System.out.println("Calibration finished");

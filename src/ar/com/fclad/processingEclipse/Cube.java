@@ -1,116 +1,118 @@
 package ar.com.fclad.processingEclipse;
 
+import java.awt.Color;
+import java.util.ArrayList;
+
 import processing.core.PApplet;
+import processing.core.PConstants;
+import processing.core.PImage;
 import processing.core.PMatrix3D;
 
+//This class has been extracted and modified from Procesing examples
+/*
+ * Texture Cube
+ * by Dave Bollinger.
+ * 
+ * Drag mouse to rotate cube. Demonstrates use of u/v coords in 
+ * parent.vertex() and effect on texture(). The textures get distorted using
+ * the P3D renderer as you can see, but they look great using OPENGL.
+*/
 public class Cube {
 
-	float alpha = 0;
-	float beta = 0;
-	float gamma = 0;
-  
-	final float minZ = 10;
-	final float maxZ = 200;
-  
-	float x_pos = 0;
-	float y_pos = 0;
-	float z_pos = 100;
-	private final static float positionChangeConstant = 10;
-	private final static float angleChangeConstant = (float) (0.02*Math.PI);
+	private PApplet parent;
+	private CommunicationThread commThread;
 	
-	PApplet parent;
-  
-	CommunicationThread commThread;
-	  
-	  public Cube(PApplet p, CommunicationThread commThread) {
-		  this.parent = p;
-		  this.commThread = commThread;
-		  
-	  }
-	                      
-	  void setX(float value){
-	   x_pos =  value;
-	  }
-	  
-	  void setY(float value){
-	   y_pos =  value;
-	  }
-	  
-	  void setZ(float value){
-	   z_pos = value; 
-	   if(z_pos > maxZ) z_pos = maxZ;
-	   else if(z_pos < minZ) z_pos = minZ;
-	  }
-	  
-	  void setAlpha(float value){
-	    alpha = value;
-	  }
-	  
-	  void setBeta(float value){
-	    beta = value;
-	  }
-	  
-	  void setGamma(float value){
-	   gamma = value; 
-	  }
-	  
-	  void increaseX(){
-	    x_pos += positionChangeConstant;
-	    //if(x_pos < 0) x_pos = 0;
-	  }
-	  void increaseY(){
-	    y_pos += positionChangeConstant;
-	    //if(y_pos < 0) y_pos = 0;
-	  }
-	  void increaseZ(){
-	    z_pos += positionChangeConstant;
-	    if(z_pos > maxZ) z_pos = maxZ;
-	  }
-	  void decreaseX(){
-	    x_pos -= positionChangeConstant;
-	  }
-	  void decreaseY(){
-	    y_pos -= positionChangeConstant;
-	  }
-	  void decreaseZ(){
-	    z_pos -= positionChangeConstant;
-	    if(z_pos < minZ) z_pos = minZ;
-	  }
-	  
-	  void increaseAlpha(){
-	    alpha+= angleChangeConstant;
-	  }
-	   void increaseBeta(){
-	    beta+= angleChangeConstant;
-	  }
-	   void increaseGamma(){
-	    gamma+= angleChangeConstant;
-	  }
-	  
-	  public void display(){
+	private ArrayList<PImage> textures;
+	
+	private float size;
+	
+	public Cube(PApplet p, CommunicationThread commThread, float size) {
+		this.parent = p;
+		this.commThread = commThread;
+		textures = new ArrayList<>();
+		System.out.println("Working Directory = " +
+	              System.getProperty("user.dir"));
+		for(int i=0;i<6;i++){
+			textures.add(parent.loadImage("textures/"+i+".jpg"));
+		}
+		if(size>10){
+			this.size = size;
+		}
+		else{
+			size=100;
+		}
+	 }
+	 
+	public void display(){
 	    parent.stroke(0);
-	    //noFill();
+	    parent.background(Color.WHITE.getRGB());
 	    parent.fill(123);
-	    //translate(width/2+x_pos,height/2+y_pos);
-	    //rotateX(alpha);
-	    //rotateY(beta);
-	    //rotateZ(gamma);
-	    
-	    /*
-	   float[] angles = new float[3];
-	   
-	   angles = commThread.getRotationAngles();
-	   parent.translate(parent.width/2, parent.height/2);
-	   parent.rotateX(angles[0]);
-	   parent.rotateY(angles[1]);
-	   parent.rotateZ(angles[2]);
-	   */
-	   
-	   PMatrix3D rotTransMatr = commThread.getRotationTranslationMatrix();
-	   parent.setMatrix(rotTransMatr);
-	   //scale(1,-1);
-	   // usar scale en vez de el tamaño
-	   parent.box(100);
+	    PMatrix3D translationMatrix = new PMatrix3D(1,0,0,0,
+				0,1,0,0,
+				0,0,1,-400,
+				0,0,0,1);
+		PMatrix3D rotTransMatr = commThread.getRotationTranslationMatrix();
+		rotTransMatr.preApply(translationMatrix);
+		parent.setMatrix(rotTransMatr);
+		  
+		// +Z "front" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(0));
+		parent.vertex(-size, -size,  size, 0, 0);
+		parent.vertex( size, -size,  size, size, 0);
+		parent.vertex( size,  size,  size, size, size);
+		parent.vertex(-size,  size,  size, 0, size);
+		parent.endShape();
+		
+		// -Z "back" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(1));
+		parent.vertex( size, -size, -size, 0, 0);
+		parent.vertex(-size, -size, -size, size, 0);
+		parent.vertex(-size,  size, -size, size, size);
+		parent.vertex( size,  size, -size, 0, size);
+		parent.endShape();
+		
+		// +Y "bottom" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(2));
+		parent.vertex(-size,  size,  size, 0, 0);
+		parent.vertex( size,  size,  size, size, 0);
+		parent.vertex( size,  size, -size, size, size);
+		parent.vertex(-size,  size, -size, 0, size);
+		parent.endShape();
+		
+		// -Y "top" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(3));
+		parent.vertex(-size, -size, -size, 0, 0);
+		parent.vertex( size, -size, -size, size, 0);
+		parent.vertex( size, -size,  size, size, size);
+		parent.vertex(-size, -size,  size, 0, size);
+		parent.endShape();
+		
+		// +X "right" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(4));
+		parent.vertex( size, -size,  size, 0, 0);
+		parent.vertex( size, -size, -size, size, 0);
+		parent.vertex( size,  size, -size, size, size);
+		parent.vertex( size,  size,  size, 0, size);
+		parent.endShape();
+		
+		// -X "left" face
+		parent.beginShape(PConstants.QUADS);
+		parent.texture(textures.get(5));
+		parent.vertex(-size, -size, -size, 0, 0);
+		parent.vertex(-size, -size,  size, size, 0);
+		parent.vertex(-size,  size,  size, size, size);
+		parent.vertex(-size,  size, -size, 0, size);
+		parent.endShape();
+		
+		parent.line(-2*size, 0, 0, 2*size, 0, 0);
+		parent.line(0, -2*size, 0, 0, 2*size, 0);
+		parent.line(0, 0, -2*size, 0, 0, 2*size);
+		//parent.box(100);
 
 	  }
 }
