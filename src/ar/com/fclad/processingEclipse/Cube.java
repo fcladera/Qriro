@@ -44,6 +44,7 @@ public class Cube {
 	 }
 	 
 	public void display(){
+		parent.pushMatrix();
 	    parent.stroke(0);
 	    parent.background(Color.WHITE.getRGB());
 	    parent.fill(123);
@@ -113,6 +114,7 @@ public class Cube {
 		parent.line(0, -2*size, 0, 0, 2*size, 0);
 		parent.line(0, 0, -2*size, 0, 0, 2*size);
 		//parent.box(100);
+		parent.popMatrix();
 
 	  }
 }
