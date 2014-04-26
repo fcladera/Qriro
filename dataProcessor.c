@@ -499,8 +499,8 @@ void *processingThread(void * arg){
 			}
 
 			if(sscanf(sliding_pointer,"%c:%ld:%lf:%lf:%lf:%lf;\n",	&sensorType,&frameID,
-																	&timeValue,values,values+1,values+2)
-																	!= 6){
+										&timeValue,values,values+1,values+2)
+										!= 6){
 				fprintf(stderr,"ERRONEOUS FRAME:\n%s\n",buffer);
 				exit(EXIT_FAILURE);
 			}
