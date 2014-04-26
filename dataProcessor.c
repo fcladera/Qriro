@@ -626,14 +626,14 @@ void *processingThread(void * arg){
 					//printMatrix(rot_matrix);
 
 					double	m00 = gsl_matrix_get(rot_matrix,0,0),
-							m01 = gsl_matrix_get(rot_matrix,0,1),
-							m02 = gsl_matrix_get(rot_matrix,0,2),
-							m10 = gsl_matrix_get(rot_matrix,1,0),
-							m11 = gsl_matrix_get(rot_matrix,1,1),
-							m12 = gsl_matrix_get(rot_matrix,1,2),
-							m20 = gsl_matrix_get(rot_matrix,2,0),
-							m21 = gsl_matrix_get(rot_matrix,2,1),
-							m22 = gsl_matrix_get(rot_matrix,2,2);
+						m01 = gsl_matrix_get(rot_matrix,0,1),
+						m02 = gsl_matrix_get(rot_matrix,0,2),
+						m10 = gsl_matrix_get(rot_matrix,1,0),
+						m11 = gsl_matrix_get(rot_matrix,1,1),
+						m12 = gsl_matrix_get(rot_matrix,1,2),
+						m20 = gsl_matrix_get(rot_matrix,2,0),
+						m21 = gsl_matrix_get(rot_matrix,2,1),
+						m22 = gsl_matrix_get(rot_matrix,2,2);
 
 					gsl_matrix_set(rotationAndTranslation,0,0,m00);
 					gsl_matrix_set(rotationAndTranslation,0,1,m01);

@@ -172,6 +172,8 @@ filtered(:,4) = filter(b,1,gyroValues(:,4));
 
 % filtered = gyroValues;
 hold on
+xlabel('Sample');
+ylabel('Gyro values');
 plot(filtered(:,2:4));
 grid on
 
