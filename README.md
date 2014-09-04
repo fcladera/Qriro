@@ -41,7 +41,7 @@ port indicates the TCP port where the virtual reality application will ask for d
 2. Start the android application. Modify TCP parameters to suit your connection configuration (Server IP and portDevice)
 3. Select "Start Drawing" to send data to the Server.
 
-### Get rotation matrix
+### Get transformation matrix
 1. Connect to the C server using TCP
 2. Send the TCP request `GETMAT`
 
