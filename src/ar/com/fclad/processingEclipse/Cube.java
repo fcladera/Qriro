@@ -45,10 +45,10 @@ public class Cube {
 	 
 	public void display(){
 		parent.pushMatrix();
-	    parent.stroke(0);
-	    parent.background(Color.WHITE.getRGB());
-	    parent.fill(123);
-	    PMatrix3D translationMatrix = new PMatrix3D(1,0,0,0,
+		parent.stroke(0);
+		parent.background(Color.WHITE.getRGB());
+		parent.fill(123);
+		PMatrix3D translationMatrix = new PMatrix3D(1,0,0,0,
 				0,1,0,0,
 				0,0,1,-400,
 				0,0,0,1);

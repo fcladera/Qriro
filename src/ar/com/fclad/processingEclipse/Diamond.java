@@ -69,7 +69,7 @@ public class Diamond {
 	}
 	
 	public void diamondEscaped(){
-		scoreCounter.decreaseScore(20);
+		scoreCounter.decreaseScore(10);
 		reset();
 	}
 	
@@ -139,10 +139,11 @@ public class Diamond {
 		  y = parent.random((float)(-parent.height/2*.7), (float)(parent.height/2*.7));
 		  
 		  // Set diamond type and color
-		  int randomValue = (int) parent.random(0,6);
+		  int randomValue = (int) parent.random(0,10);
 		  
 		  switch (randomValue) {
 			case 1:
+			case 0:
 				// Diamond is DIAMOND_BAD which are ugly red
 				diamondType = DIAMOND_BAD;
 				for(int i=0;i<nbPoints;i++){

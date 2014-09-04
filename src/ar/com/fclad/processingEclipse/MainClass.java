@@ -2,16 +2,6 @@ package ar.com.fclad.processingEclipse;
 
 import java.awt.Color;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import processing.core.*;
@@ -22,21 +12,20 @@ public class MainClass extends PApplet{
 	
 
 	public static void main(String args[]) {
-		PApplet.main(new String[] { "--present", "MyProcessingSketch" });
+		PApplet.main(new String[] { "--present", "ar.com.fclad.processingEclipse.MainClass" });
 	}
 
 	//=======================================================================
 	// Shared variables
 	
 	private CommunicationThread commThread; 
-	private boolean calibrated=true;
+	private boolean calibrated=false;
 	PFont f;
 	
 	//=======================================================================
 	// Application running
 	private static final int APPLICATION_DIAMONDS = 0;
 	private static final int APPLICATION_CUBE = 1;
-	private static final int APPLICATION_LAND = 2;
 	private int currentApplication = APPLICATION_CUBE;
 	
 	//=======================================================================
@@ -62,14 +51,6 @@ public class MainClass extends PApplet{
 	// Cube program variables
 	
 	private Cube cube = null;
-	
-
-	//=======================================================================
-	// Land program variables
-	
-	
-	
-	
 	
 	public MainClass() {
 		commThread = new CommunicationThread(this);
@@ -105,9 +86,6 @@ public class MainClass extends PApplet{
 		// Cube program
 		
 		cube = new Cube(this,commThread,60);
-		
-		//=======================================================================
-		// Land program
 		
 		//=======================================================================
 		// Ask first rotation matrix
@@ -193,9 +171,6 @@ public class MainClass extends PApplet{
 			
 		}
 		
-		
-		
-
 		//=======================================================================
 		// Ask new rotation matrix
 		commThread.askNewRotationMatrix();
@@ -214,9 +189,11 @@ public class MainClass extends PApplet{
 	  	} 
 	}
 	
+	
+	
 	private void changeApplication(){
 		currentApplication++;
-		if(currentApplication==APPLICATION_LAND+1){
+		if(currentApplication==APPLICATION_CUBE+1){
 			currentApplication = APPLICATION_DIAMONDS;
 		}
 	}
@@ -230,6 +207,13 @@ public class MainClass extends PApplet{
 			}
 		}
 		return isCaptured;
+	}
+
+	@Override
+	public void keyPressed() {
+		if(key == ' '){
+			changeApplication();
+		}
 	}
 
 }

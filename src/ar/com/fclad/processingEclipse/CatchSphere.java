@@ -3,8 +3,6 @@ package ar.com.fclad.processingEclipse;
 import java.awt.Color;
 
 import processing.core.PApplet;
-import processing.core.PMatrix3D;
-import processing.core.PVector;
 
 public class CatchSphere extends CatchObject{
 	private float pRadius;
