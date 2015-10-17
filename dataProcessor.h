@@ -1,12 +1,12 @@
 /*
- * simple_tcp_server.h
+ * dataProcessor.h
  *
  *  Created on: Nov 10, 2013
  *      Author: fclad
  */
 
-#ifndef SIMPLE_TCP_SERVER_H_
-#define SIMPLE_TCP_SERVER_H_
+#ifndef DATA_PROCESSOR_H
+#define DATA_PROCESSOR_H
 
 
 //=======================================================================
@@ -63,4 +63,4 @@ typedef struct broadcastMessage{
 #define START_THREAD 2048+1
 #define CALIBRATION_END 2048+2
 
-#endif /* SIMPLE_TCP_SERVER_H_ */
+#endif /* DATA_PROCESSOR_H */
