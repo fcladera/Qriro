@@ -7,3 +7,11 @@ compiler:
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libgsl0-dev libbluetooth-dev
+ - aclocal
+ - autoconf
+ - automake --add-missing
+ - ./configure
+ - make
+# - make test
+
+script: true
