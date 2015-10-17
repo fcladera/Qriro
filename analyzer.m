@@ -162,7 +162,7 @@ b = fir2(filter_size,f,m);
 hold off;
 
 figure
-plot(gyroValues(:,2:4));
+raw_gyro = plot(gyroValues(:,2:4));
 grid on
 
 filtered(:,1) = gyroValues(:,1);
@@ -174,8 +174,48 @@ filtered(:,4) = filter(b,1,gyroValues(:,4));
 hold on
 xlabel('Sample');
 ylabel('Gyro values');
-plot(filtered(:,2:4));
+filtered_gyro = plot(filtered(:,2:4));
 grid on
+
+% Nice plot!
+set(raw_gyro(1), 'Color', [0 0 .5]);
+set(raw_gyro(2), 'Color', [0 .5 0]);
+set(raw_gyro(3), 'Color', [.5 0 0]);
+set(filtered_gyro(1), 'Color', [0 .2 .5],...
+    'LineStyle', '--');
+set(filtered_gyro(2), 'Color', [.2 .5 0],...
+    'LineStyle', '--');
+set(filtered_gyro(3), 'Color', [.5 0 .2],...
+    'LineStyle', '--');
+
+hLegend = legend( ...
+  [raw_gyro; filtered_gyro], ...
+  'Gyro X raw', ...
+  'Gyro y raw', ...
+  'Gyro z raw', ...
+  'Gyro x filtered', ...
+  'Gyro y filtered', ...
+  'Gyro z filtered', ...
+  'location', 'NorthWest' );
+hTitle  = title ('FIR filtering of gyro data');
+hXLabel = xlabel('Sample');
+hYLabel = ylabel('Ang velocity');
+
+set( gca                       , ...
+    'FontName'   , 'Helvetica' );
+set([hTitle, hXLabel, hYLabel], ...
+    'FontName'   , 'AvantGarde');
+set([hLegend, gca]             , ...
+    'FontSize'   , 8           );
+set([hXLabel, hYLabel]  , ...
+    'FontSize'   , 10          );
+set( hTitle                    , ...
+    'FontSize'   , 12          , ...
+    'FontWeight' , 'bold'      );
+
+set(gcf, 'PaperPositionMode', 'auto');
+
+break;
 
 %% Integrate over time
 gyroIntegrated = zeros(length(filtered),3);
