@@ -1,0 +1,16 @@
+language: c
+compiler:
+  - gcc
+
+# Install GNU Scientific library
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq libgsl0-dev libbluetooth-dev
+
+script:
+ - cd Server
+ - mkdir build
+ - cd build
+ - cmake ../src
+ - cmake --build .
+ - ./Qriro-server
