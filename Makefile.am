@@ -1,8 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
-AM_CFLAGS = -W -Wall -pedantic -O3 \
-						-U__STRICT_ANSI_
-AM_LDFLAGS=-lpthread -lm -lgsl -lgslcblas -lbluetooth
+AM_CFLAGS = -W -Wall -O3
+AM_LDFLAGS= -lpthread -lgsl -lgslcblas -lm -lbluetooth
 
 bin_PROGRAMS = dataProcessor
 

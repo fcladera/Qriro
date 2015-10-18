@@ -6,7 +6,8 @@ compiler:
 # Install GNU Scientific library
 before_install:
  - sudo apt-get update -qq
- - sudo apt-get install -qq libgsl0-dev libbluetooth-dev
+ - sudo apt-get install -qq libgsl0-dev gsl-bin libgsl0-dbg libbluetooth-dev
+ - sudo apt-cache search gsl
  - aclocal
  - autoconf
  - automake --add-missing
