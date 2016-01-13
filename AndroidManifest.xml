@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ar.com.fclad.datasender"
+    android:versionCode="2"
+    android:versionName="1.1" >
+
+    <uses-sdk
+        android:minSdkVersion="17"
+        android:targetSdkVersion="17" />
+
+    <uses-permission android:name="android.permission.INTERNET" >
+    </uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" >
+    </uses-permission>
+    <uses-permission android:name="android.permission.BLUETOOTH" >
+    </uses-permission>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" >
+    </uses-permission>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name="ar.com.fclad.datasender.MainActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="portrait" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="ar.com.fclad.datasender.DrawActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/title_activity_draw"
+            android:theme="@style/FullscreenTheme" >
+        </activity>
+
+        <service
+            android:name="ar.com.fclad.datasender.TCPclientService"
+            android:enabled="true"
+            android:exported="false" >
+        </service>
+        <service
+            android:name="ar.com.fclad.datasender.BluetoothServerService"
+            android:enabled="true"
+            android:exported="false" >
+        </service>
+
+        <activity
+            android:name="ar.com.fclad.datasender.ConfigureTCPActivity"
+            android:label="@string/title_activity_configure_tcp"
+            android:windowSoftInputMode="adjustResize|stateVisible" >
+        </activity>
+    </application>
+
+</manifest>

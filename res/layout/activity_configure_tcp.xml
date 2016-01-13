@@ -1,0 +1,57 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".ConfigureTCPActivity" >
+
+    <ScrollView
+        android:id="@+id/login_form"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+
+        <LinearLayout
+            style="@style/LoginFormContainer"
+            android:orientation="vertical" >
+
+            <EditText
+                android:id="@+id/ip_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/configure_ip_address"
+                android:inputType="phone"
+                android:maxLines="1"
+                android:singleLine="true" >
+                <requestFocus />
+                </EditText>
+
+            <EditText
+                android:id="@+id/tcp_port"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/configure_tcp_port"
+                android:ems="10"
+                android:inputType="number" >
+            </EditText>
+
+            <Button
+                android:id="@+id/ok_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingLeft="32dp"
+                android:paddingRight="32dp"
+                android:text="@string/OK_button" 
+                android:onClick="onClickListener" />
+
+            <Button
+                android:id="@+id/cancel_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingLeft="32dp"
+                android:paddingRight="32dp"
+                android:text="@string/Cancel_button" 
+                android:onClick="onClickListener"/>
+                
+        </LinearLayout>
+    </ScrollView>
+
+</merge>
