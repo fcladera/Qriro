@@ -1,14 +1,15 @@
+# === C builds ====
 *.o
 *.out
 *~
 *.bin
+bin/
 
 # === Eclipse ===
 .cproject
 .project
 .settings
 
-=======
 # built application files
 *.apk
 *.ap_
@@ -40,3 +41,6 @@ proguard/
 .idea/
 
 *.zip
+
+# === Vim ===
+*.swp

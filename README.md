@@ -16,7 +16,7 @@ First, a connection needs to be established with the server.
 - If the connection is established using TCP, dataProcessor.bin acts as a server and the Android application acts as a client (see TCPclientService.java).
 - If the connection is established using Bluetooth, dataProcessor.bin acts as a client and the Android application acts as a server (see BluetoothServerService.java).
 
-Once the connection with the server is established, an Android service is active. Messages can be broadcasted to the C server using this service. The application switches to DrawActivity activity, where a message is sent each time a sensor changes or the screen is touched.
+Once the connection with the server is established, an Android service is active. Messages can be broadcasted to the server using this service. The application switches to DrawActivity activity, where a message is sent each time a sensor changes or the screen is touched.
 
 Actually, only the Gyro and the screen can send information to the server. Commands can also be sent.
 
@@ -54,6 +54,43 @@ COM:ComID;
 MAT:m00:m01:m02:m03:m10:m11:m12:m13:m20:m21:m22:m23:
 m30:m31:m32:m33:m40:m41:m42:m43;
 
+## How does the demo work?
+In the demo application, the transformation matrix is used in two virtual reality examples.
+
+First, a socket is established between the server and this application (see CommunicationThread.java). Each time the screen is drawn, a new translation matrix is requested to the server using `commThread.askNewRotationMatrix()`. This matrix can be used with `commThread.getRotationTranslationMatrix()`.
+
+As specified, two examples are given:
+- A Cube. whose position is modified using the transformation matrix (see Cube.java)
+- A Game, where diamonds have to be caught using a ring controlled by the phone. This game is inspired in the [processing tutorial](https://github.com/AmnonOwed/P5_CanTut_GeometryTexturesShaders/tree/master/Custom3DGeometry) by [Amnon Owed](https://github.com/AmnonOwed)
+
+## Requirements
+
+### Server
+ - A working C compiler
+ - bluez-libs
+ - GNU Scientific Library (GSL)
+
+### Android application
+ - An android phone with gyroscope and Android > 4.0
+
+### For the demo application
+- Processing (tested with 2.2.1)
+- JDK (tested with Openjdk 7)
+
+## Building
+
+### Server
+Go to the Server folder and call make
+```
+cd Server
+make
+```
+### Android
+TODO
+
+### Demo application
+TODO
+
 ## How to use Qriro?
 
 You need to:
@@ -75,7 +112,7 @@ port indicates the TCP port where the virtual reality application will ask for d
 3. Select "Start Drawing" to send data to the Server.
 
 ### Get rotation matrix
-1. Connect to the C server using TCP
+1. Connect to the server using TCP
 2. Send the TCP request `GETMAT`
 
 ## TODO
