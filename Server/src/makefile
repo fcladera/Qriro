@@ -7,14 +7,14 @@ CC=gcc
 
 CFLAGS= -U__STRICT_ANSI__ -W -Wall -O3 -D_REENTRANT
 LDFLAGS=-lpthread -lm -lgsl -lgslcblas -lbluetooth
-SOURCES= dataProcessor.c fifo.c
-EXECUTABLE = dataProcessor.bin
+SOURCES= Qriro-server.c fifo.c
+EXECUTABLE = Qriro-server.bin
 
 all : clean ${EXECUTABLE}
 
 .SUFFIXES:
 
-${EXECUTABLE}: 
+${EXECUTABLE}:
 	${CC} -o $@ ${SOURCES} ${CFLAGS} ${LDFLAGS}
 	@echo
 

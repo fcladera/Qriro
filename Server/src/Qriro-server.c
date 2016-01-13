@@ -31,7 +31,7 @@
 #include <gsl/gsl_blas.h>
 
 #include "fifo.h"
-#include "dataProcessor.h"
+#include "Qriro-server.h"
 
 // TODO Recalibrate on demand!
 
@@ -511,7 +511,7 @@ void *processingThread(void * arg){
 			}
 			if(sensorType=='C'){
 				// Commands, sent to this application or to be broadcasted
-				// Read dataProcessor.h
+				// Read Qriro-server.h
 				int id = (int)values[0];
 				if(id<1024){
 					switch (id) {

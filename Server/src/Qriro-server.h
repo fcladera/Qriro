@@ -1,12 +1,12 @@
 /*
- * simple_tcp_server.h
+ * Qriro-server.h
  *
  *  Created on: Nov 10, 2013
  *      Author: fclad
  */
 
-#ifndef SIMPLE_TCP_SERVER_H_
-#define SIMPLE_TCP_SERVER_H_
+#ifndef QRIRO_SERVER_H_
+#define QRIRO_SERVER_H_
 
 
 //=======================================================================
@@ -55,12 +55,12 @@ typedef struct broadcastMessage{
 
 //=======================================================================
 // Messages
-// Messages with ID from 1 to 1024 are sent from the phone to dataProcessor, and are not broadcasted to the application
+// Messages with ID from 1 to 1024 are sent from the phone to Qriro-server, and are not broadcasted to the application
 #define TOGGLE_FILTER 1
 // Messages with ID  from 1025 to 2048 are sent from the phone to the application and are broadcasted to the application
 #define DOUBLE_TAP 1024+1
-// Messages with ID bigger than 2049 are sent from dataProcessor to the application
+// Messages with ID bigger than 2049 are sent from Qriro-server to the application
 #define START_THREAD 2048+1
 #define CALIBRATION_END 2048+2
 
-#endif /* SIMPLE_TCP_SERVER_H_ */
+#endif /* QRIRO_SERVER_H_*/
