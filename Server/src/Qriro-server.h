@@ -57,7 +57,7 @@ typedef struct broadcastMessage{
 // Messages
 // Messages with ID from 1 to 1024 are sent from the phone to Qriro-server, and are not broadcasted to the application
 #define TOGGLE_FILTER 1
-// Messages with ID  from 1025 to 2048 are sent from the phone to the application and are broadcasted to the application
+// Messages with ID  from 1025 to 2048 are sent from the phone to Qriro-server, and are broadcasted to the application
 #define DOUBLE_TAP 1024+1
 // Messages with ID bigger than 2049 are sent from Qriro-server to the application
 #define START_THREAD 2048+1

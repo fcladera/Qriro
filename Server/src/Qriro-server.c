@@ -37,9 +37,9 @@
 
 //=======================================================================
 // Global variables
-gsl_matrix *rotationAndTranslation = NULL;	// Rotation matrix shared by the android server and the application server
-Configuration *configuration;
-BroadcastMessage *broadcastMessage;
+gsl_matrix *rotationAndTranslation = NULL; // Transformation matrix calculated
+Configuration *configuration; // Configuration parameters of Qriro-server
+BroadcastMessage *broadcastMessage; // Message from server to phone
 
 volatile bool socketSet = false;
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
