@@ -394,10 +394,6 @@ int main(int argc, char **argv){
 }
 
 void *processingThread(void * arg){
-	//
-	broadcastMessage->mesageAvailable = true;
-	broadcastMessage->message = START_THREAD;
-
 	//=======================================================================
 	// Program Variables
 	Connection * connection = (Connection *)arg;
