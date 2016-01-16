@@ -505,6 +505,11 @@ void *processingThread(void * arg){
 							configuration->filterEnabled = !configuration->filterEnabled;
 							fprintf(stderr,"Filtering: %d\n",(int)configuration->filterEnabled);
 							break;
+            case RESET_MATRIX:
+              gsl_matrix_set_identity(rotationAndTranslation);
+							fprintf(stderr,"Transformation matrix cleared\n");
+              break;
+
 						default:
 							fprintf(stderr,"Erroneous command ID: %d\n",id);
 							break;
