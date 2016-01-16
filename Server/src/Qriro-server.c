@@ -30,10 +30,8 @@
 #include <gsl/gsl_cblas.h>
 #include <gsl/gsl_blas.h>
 
-#include "fifo.h"
+#include "FIFOlib/fifo.h"
 #include "Qriro-server.h"
-
-// TODO Recalibrate on demand!
 
 //=======================================================================
 // Global variables
@@ -412,14 +410,9 @@ void *processingThread(void * arg){
 			screen_z = 0;
 
 	// Gyro vectors (rotational velocity)
-	double 	alpha_vel[SIZE_VALUES],
-			beta_vel[SIZE_VALUES],
-			gamma_vel[SIZE_VALUES];
-
-	// rotational velocity, constant component
-	double 	alpha_vel_st=NAN,
-			beta_vel_st=NAN,
-			gamma_vel_st=NAN;
+	double 	alpha_vel_buffer[SIZE_VALUES],
+			beta_vel_buffer[SIZE_VALUES],
+			gamma_vel_buffer[SIZE_VALUES];
 
 	// Rotation matrices
 	gsl_matrix 	*Rx = gsl_matrix_calloc(3,3),
@@ -438,12 +431,9 @@ void *processingThread(void * arg){
 			endTime;
 
 	//Each time the client connects, the buffers are cleaned
-	clearfifo(alpha_vel,SIZE_VALUES);
-	clearfifo(beta_vel,SIZE_VALUES);
-	clearfifo(gamma_vel,SIZE_VALUES);
-	alpha_vel_st=NAN,
-	beta_vel_st=NAN,
-	gamma_vel_st=NAN;
+	clearfifo(alpha_vel_buffer,SIZE_VALUES);
+	clearfifo(beta_vel_buffer,SIZE_VALUES);
+	clearfifo(gamma_vel_buffer,SIZE_VALUES);
 
 	gsl_matrix_set_zero(Rx);
 	gsl_matrix_set_zero(Ry);
@@ -532,122 +522,106 @@ void *processingThread(void * arg){
 
 			else if(sensorType=='G'){
 
-				if(counter_gyro<SIZE_VALUES){
-					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
-					counter_gyro++;
+        double alpha_vel,
+               beta_vel,
+               gamma_vel;
+
+        alpha_vel = values[0];
+        beta_vel = values[1];
+        gamma_vel = values[2];
+
+				double  alpha_pos_delta,
+						beta_pos_delta,
+						gamma_pos_delta;
+
+				if(configuration->filterEnabled){
+					double 	alpha_vel_filtered,
+							beta_vel_filtered,
+							gamma_vel_filtered;
+
+          // Load new values in buffer
+          loadfifoMooving(alpha_vel,alpha_vel_buffer,SIZE_VALUES);
+          loadfifoMooving(beta_vel,beta_vel_buffer,SIZE_VALUES);
+          loadfifoMooving(gamma_vel, gamma_vel_buffer,SIZE_VALUES);
+
+					alpha_vel_filtered = FIRfilter(alpha_vel_buffer,firCoefs,32);
+					beta_vel_filtered = FIRfilter(beta_vel_buffer,firCoefs,32);
+					gamma_vel_filtered = FIRfilter(gamma_vel_buffer,firCoefs,32);
+
+					// Integrate to calculate the instantaneous rotation
+					alpha_pos_delta = alpha_vel_filtered*timeValue;
+					beta_pos_delta = beta_vel_filtered*timeValue;
+					gamma_pos_delta = gamma_vel_filtered*timeValue;
 				}
-				else if(counter_gyro==SIZE_VALUES){
-					alpha_vel_st = sumfifo(alpha_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-					beta_vel_st = sumfifo(beta_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-					gamma_vel_st = sumfifo(gamma_vel,SIZE_VALUES)/(double)SIZE_VALUES;
-					counter_gyro++;
-					printf("Gyro Calibrated...%lf,%lf,%lf\n",alpha_vel_st,beta_vel_st,gamma_vel_st);
-					broadcastMessage->mesageAvailable = true;
-					broadcastMessage->message = CALIBRATION_END;
-					//printfifo(alpha_vel,SIZE_VALUES);
+				else {
+					// only integrate last velocity value
+					alpha_pos_delta = alpha_vel*timeValue;
+					beta_pos_delta = beta_vel*timeValue;
+					gamma_pos_delta = gamma_vel*timeValue;
 				}
-				else{
 
-					// Store current angular velocity in a fifo
-					//loadfifoMooving(values[0]-alpha_vel_st,alpha_vel,SIZE_VALUES);
-					//loadfifoMooving(values[1]-beta_vel_st,beta_vel,SIZE_VALUES);
-					//loadfifoMooving(values[2]-gamma_vel_st,gamma_vel,SIZE_VALUES);
-					loadfifoMooving(values[0],alpha_vel,SIZE_VALUES);
-					loadfifoMooving(values[1],beta_vel,SIZE_VALUES);
-					loadfifoMooving(values[2],gamma_vel,SIZE_VALUES);
+				//Calculate rotation matrices
+				// Be aware that the axis from the telephone and the axis for the application are not
+				// the same!
+				// x_application => x_telephone
+				// y_application => -z_telephone
+				// z_application => y_telephone
+				gsl_matrix_set(Rx,0,0,1);
+				gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
+				gsl_matrix_set(Rx,1,2,sin(alpha_pos_delta));
+				gsl_matrix_set(Rx,2,1,-sin(alpha_pos_delta));
+				gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
 
-					double  alpha_pos_delta,
-							beta_pos_delta,
-							gamma_pos_delta;
+				gsl_matrix_set(Ry,0,0,cos(gamma_pos_delta));
+				gsl_matrix_set(Ry,0,2,sin(gamma_pos_delta));
+				gsl_matrix_set(Ry,1,1,1);
+				gsl_matrix_set(Ry,2,0,-sin(gamma_pos_delta));
+				gsl_matrix_set(Ry,2,2,cos(gamma_pos_delta));
 
-					if(configuration->filterEnabled){
-						double 	alpha_filtered,
-								beta_filtered,
-								gamma_filtered;
+				gsl_matrix_set(Rz,0,0,cos(beta_pos_delta));
+				gsl_matrix_set(Rz,0,1,-sin(beta_pos_delta));
+				gsl_matrix_set(Rz,1,0,sin(beta_pos_delta));
+				gsl_matrix_set(Rz,1,1,cos(beta_pos_delta));
+				gsl_matrix_set(Rz,2,2,1);
 
-						alpha_filtered = FIRfilter(alpha_vel,firCoefs,32);
-						beta_filtered = FIRfilter(beta_vel,firCoefs,32);
-						gamma_filtered = FIRfilter(gamma_vel,firCoefs,32);
+				gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+										1.0, Rx,Ry,
+										0.0, RxRy);
+				gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+										1.0, RxRy,Rz,
+										0.0, instantaneous_rotation);
 
-						// Integrate to calculate the instantaneous rotation
-						alpha_pos_delta = alpha_filtered*timeValue;
-						beta_pos_delta = beta_filtered*timeValue;
-						gamma_pos_delta = gamma_filtered*timeValue;
-					}
-					else {
-						// only integrate last velocity value
-						alpha_pos_delta = alpha_vel[0]*timeValue;
-						beta_pos_delta = beta_vel[0]*timeValue;
-						gamma_pos_delta = gamma_vel[0]*timeValue;
-					}
+				// Add the instantaneous rotation to the previous one
+				gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
+							1.0, previous_rotation,instantaneous_rotation,
+							0.0, rot_matrix);
+				gsl_matrix_memcpy(previous_rotation,rot_matrix);
+				//printMatrix(rot_matrix);
 
-					//Calculate rotation matrices
-					// Be aware that the axis from the telephone and the axis for the application are not
-					// the same!
-					// x_application => x_telephone
-					// y_application => -z_telephone
-					// z_application => y_telephone
-					gsl_matrix_set(Rx,0,0,1);
-					gsl_matrix_set(Rx,1,1,cos(alpha_pos_delta));
-					gsl_matrix_set(Rx,1,2,sin(alpha_pos_delta));
-					gsl_matrix_set(Rx,2,1,-sin(alpha_pos_delta));
-					gsl_matrix_set(Rx,2,2,cos(alpha_pos_delta));
+				double	m00 = gsl_matrix_get(rot_matrix,0,0),
+					m01 = gsl_matrix_get(rot_matrix,0,1),
+					m02 = gsl_matrix_get(rot_matrix,0,2),
+					m10 = gsl_matrix_get(rot_matrix,1,0),
+					m11 = gsl_matrix_get(rot_matrix,1,1),
+					m12 = gsl_matrix_get(rot_matrix,1,2),
+					m20 = gsl_matrix_get(rot_matrix,2,0),
+					m21 = gsl_matrix_get(rot_matrix,2,1),
+					m22 = gsl_matrix_get(rot_matrix,2,2);
 
-					gsl_matrix_set(Ry,0,0,cos(gamma_pos_delta));
-					gsl_matrix_set(Ry,0,2,sin(gamma_pos_delta));
-					gsl_matrix_set(Ry,1,1,1);
-					gsl_matrix_set(Ry,2,0,-sin(gamma_pos_delta));
-					gsl_matrix_set(Ry,2,2,cos(gamma_pos_delta));
+				gsl_matrix_set(rotationAndTranslation,0,0,m00);
+				gsl_matrix_set(rotationAndTranslation,0,1,m01);
+				gsl_matrix_set(rotationAndTranslation,0,2,m02);
+				gsl_matrix_set(rotationAndTranslation,1,0,m10);
+				gsl_matrix_set(rotationAndTranslation,1,1,m11);
+				gsl_matrix_set(rotationAndTranslation,1,2,m12);
+				gsl_matrix_set(rotationAndTranslation,2,0,m20);
+				gsl_matrix_set(rotationAndTranslation,2,1,m21);
+				gsl_matrix_set(rotationAndTranslation,2,2,m22);
 
-					gsl_matrix_set(Rz,0,0,cos(beta_pos_delta));
-					gsl_matrix_set(Rz,0,1,-sin(beta_pos_delta));
-					gsl_matrix_set(Rz,1,0,sin(beta_pos_delta));
-					gsl_matrix_set(Rz,1,1,cos(beta_pos_delta));
-					gsl_matrix_set(Rz,2,2,1);
-
-					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-											1.0, Rx,Ry,
-											0.0, RxRy);
-					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-											1.0, RxRy,Rz,
-											0.0, instantaneous_rotation);
-
-					// Add the instantaneous rotation to the previous one
-					gsl_blas_dgemm(CblasNoTrans,CblasNoTrans,
-								1.0, previous_rotation,instantaneous_rotation,
-								0.0, rot_matrix);
-					gsl_matrix_memcpy(previous_rotation,rot_matrix);
-					//printMatrix(rot_matrix);
-
-					double	m00 = gsl_matrix_get(rot_matrix,0,0),
-						m01 = gsl_matrix_get(rot_matrix,0,1),
-						m02 = gsl_matrix_get(rot_matrix,0,2),
-						m10 = gsl_matrix_get(rot_matrix,1,0),
-						m11 = gsl_matrix_get(rot_matrix,1,1),
-						m12 = gsl_matrix_get(rot_matrix,1,2),
-						m20 = gsl_matrix_get(rot_matrix,2,0),
-						m21 = gsl_matrix_get(rot_matrix,2,1),
-						m22 = gsl_matrix_get(rot_matrix,2,2);
-
-					gsl_matrix_set(rotationAndTranslation,0,0,m00);
-					gsl_matrix_set(rotationAndTranslation,0,1,m01);
-					gsl_matrix_set(rotationAndTranslation,0,2,m02);
-					gsl_matrix_set(rotationAndTranslation,1,0,m10);
-					gsl_matrix_set(rotationAndTranslation,1,1,m11);
-					gsl_matrix_set(rotationAndTranslation,1,2,m12);
-					gsl_matrix_set(rotationAndTranslation,2,0,m20);
-					gsl_matrix_set(rotationAndTranslation,2,1,m21);
-					gsl_matrix_set(rotationAndTranslation,2,2,m22);
-
-					//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
-					//fflush(gp_gyro);
-					//fprintf(gp_latency,"%lf\n",timeValue);
-					//fflush(gp_latency);
-
-
-				}
+				//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
+				//fflush(gp_gyro);
+				//fprintf(gp_latency,"%lf\n",timeValue);
+				//fflush(gp_latency);
 
 			}
 			else if(sensorType=='S'){
