@@ -55,11 +55,11 @@ typedef struct broadcastMessage{
 
 //=======================================================================
 // Messages
-// Messages with ID from 1 to 1024 are generated in the phonehone, sent
+// Messages with ID from 1 to 1023 are generated in the phone, sent
 // to Qriro-server, and are not broadcasted to the application
 #define TOGGLE_FILTER 1
 #define RESET_MATRIX 2
-// Messages with ID  from 1025 to 2048 are generated in the phone, sent
+// Messages with ID  from 1024 to 2047 are generated in the phone, sent
 // to Qriro-server, and are broadcasted to the application
 #define DOUBLE_TAP 1024+1
 // Messages with ID bigger than 2049 are generated in Qriro-server and

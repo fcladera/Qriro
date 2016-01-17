@@ -697,27 +697,25 @@ void * applicationThread(void * arg){
 	for(;;){
 		// Get ask msg from the client
 		char buffer[SIZE_VALUES];
-		char broadcastBuffer[SIZE_VALUES];
 		int nb=recv(socket,buffer,SIZE_VALUES,0);
 		if(nb<=0){
 			break;
 		}
 		buffer[nb]='\0';
 
-		// Before, check and broadcast if available
-		if(broadcastMessage->mesageAvailable){
-			nb = sprintf(broadcastBuffer,"COM:%d;\n",broadcastMessage->message);
-			if(send(socket,broadcastBuffer,nb,0)==-1){
-							perror("sendThreadBroadcast");
-							exit(1);
-				}
-			broadcastMessage->mesageAvailable=false;
-		}
+		// send broadcast if available
+    if (strncmp(buffer, "GETCOM", 6)  == 0){
+      if(broadcastMessage->mesageAvailable){
+        nb = sprintf(buffer,"COM:%d;\n",broadcastMessage->message);
+        broadcastMessage->mesageAvailable=false;
+      }
+      else{
+        nb = sprintf(buffer,"NOCOM\n");
+      }
+    }
 
-
-		// Then answer query
 		//printf("%s\n",buffer);
-		if(strncmp(buffer,"GETMAT",6)==0){
+    else if(strncmp(buffer,"GETMAT",6)==0){
 			// Send rotationAndTranslation matrix to the client. Only the useful data!
 			if(rotationAndTranslation!=NULL){
 				//printf("matrix asked");
@@ -742,7 +740,7 @@ void * applicationThread(void * arg){
 
 		}
 		else{
-			nb=sprintf(buffer,"ERR\n");
+			nb=sprintf(buffer,"This is not a valid command\n");
 		}
 
 		// Send answer to client
