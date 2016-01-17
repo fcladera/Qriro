@@ -502,6 +502,16 @@ void *processingThread(void * arg){
 							fprintf(stderr,"Filtering: %d\n",(int)configuration->filterEnabled);
 							break;
             case RESET_MATRIX:
+              clearfifo(alpha_vel_buffer,SIZE_VALUES);
+              clearfifo(beta_vel_buffer,SIZE_VALUES);
+              clearfifo(gamma_vel_buffer,SIZE_VALUES);
+              gsl_matrix_set_zero(Rx);
+              gsl_matrix_set_zero(Ry);
+              gsl_matrix_set_zero(Rz);
+              gsl_matrix_set_zero(rot_matrix);
+              gsl_matrix_set_zero(RxRy);
+              gsl_matrix_set_zero(instantaneous_rotation);
+              gsl_matrix_set_identity(previous_rotation);
               gsl_matrix_set_identity(rotationAndTranslation);
 							fprintf(stderr,"Transformation matrix cleared\n");
               break;
