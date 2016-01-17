@@ -399,11 +399,6 @@ void *processingThread(void * arg){
 	FILE * logfile = connection->logFile;
 	free(connection);
 
-	// Screen vectors (velocity)
-	double 	x_vel[SIZE_VALUES],
-			y_vel[SIZE_VALUES],
-			z_vel[SIZE_VALUES];
-
 	// Screen, integration
 	double 	screen_x = 0,
 			screen_y = 0,
@@ -633,14 +628,9 @@ void *processingThread(void * arg){
 				const float xy_scale=0.2;
 				const float z_scale=3;
 
-				loadfifoMooving(values[0]*xy_scale,x_vel,SIZE_VALUES);
-				loadfifoMooving(values[1]*xy_scale,y_vel,SIZE_VALUES);
-				loadfifoMooving(values[2]*z_scale,z_vel,SIZE_VALUES);
-
 				screen_x = xy_scale*values[0]+screen_x;
 				screen_y = xy_scale*values[1]+screen_y;
 				screen_z = z_scale*values[2]+screen_z;
-
 
 				gsl_matrix_set(rotationAndTranslation,0,3,screen_x);
 				gsl_matrix_set(rotationAndTranslation,1,3,screen_y);
@@ -783,5 +773,3 @@ void howToUse(char **argv){
 	fprintf(stderr,"for Bluetooth connection with the phone\n");
 	exit(EXIT_FAILURE);
 }
-
-
