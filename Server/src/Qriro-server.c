@@ -437,6 +437,7 @@ void *processingThread(void * arg){
 	gsl_matrix_set_zero(RxRy);
 	gsl_matrix_set_zero(instantaneous_rotation);
 	gsl_matrix_set_identity(previous_rotation);
+  gsl_matrix_set_identity(rotationAndTranslation);
 	int counter_gyro=0;
 
 	for(;;){
