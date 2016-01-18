@@ -13,4 +13,5 @@ script:
  - cd build
  - cmake ../src
  - cmake --build .
- - ./Qriro-server
+ - cd ../Tests
+ - ./Qriro_server_test.py
