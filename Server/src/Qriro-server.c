@@ -45,7 +45,9 @@ FILE  *gp_screen,  *gp_gyro, *gp_latency;
 #endif
 
 
-volatile bool socketSet = false;
+volatile bool AndroidsocketSet = false;
+volatile bool ApplicationSocketSet = false;
+
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
 
@@ -260,7 +262,9 @@ int main(int argc, char **argv){
 			perror("select");
 			exit(1);
 		}
-		if(FD_ISSET(listenSocketApplication,&rdSet)){	// accept new connection from application
+		if(FD_ISSET(listenSocketApplication,&rdSet)){
+      // accept new connection from application
+
 			struct sockaddr_in fromAddrApplication;
 			socklen_t lenApplication = sizeof(fromAddrApplication);
 			int dialogSocketApplication=accept(listenSocketApplication,(struct sockaddr *)&fromAddrApplication,&lenApplication);
@@ -268,6 +272,12 @@ int main(int argc, char **argv){
 				perror("AcceptApplication");
 				exit(1);
 			}
+
+      if (AndroidsocketSet){
+        close(dialogSocketApplication);
+        continue;
+      }
+
 			printf("New Application TCP connection %s:%d\n",
 					  inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
 
@@ -275,6 +285,7 @@ int main(int argc, char **argv){
 			pthread_t thread;
 			int *arg = malloc(sizeof(int));
 			*arg = dialogSocketApplication;
+			ApplicationSocketSet = true;
 			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,applicationThread,arg);
 			if(createThread!=0){
 				fprintf(stderr,"Error on thread creation\n");
@@ -283,7 +294,7 @@ int main(int argc, char **argv){
 			}
 
 		}
-		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)&&(socketSet==false)){
+		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
 			// accept a new Android connection
 			struct sockaddr_in fromAddrAndroid;
 			socklen_t len=sizeof(fromAddrAndroid);
@@ -292,6 +303,10 @@ int main(int argc, char **argv){
 			  perror("accept");
 			  exit(1);
 			}
+      if (AndroidsocketSet){
+        close(dialogSocket);
+        continue;
+      }
 			printf("Android TCP connection %s:%d\n",
 			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
@@ -301,7 +316,7 @@ int main(int argc, char **argv){
       #if LOG_TO_FILE
 			connection->logFile = logfile;
       #endif
-			socketSet = true;
+			AndroidsocketSet = true;
 			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
 			if(createThread!=0){
 				fprintf(stderr,"Error on thread creation\n");
@@ -309,14 +324,17 @@ int main(int argc, char **argv){
 			}
 		}
 
-		if((configuration->mode==BLUETOOTH)&&(FD_ISSET(socketBluetooth,&rdSet))&&(socketSet==false)){
+		if((configuration->mode==BLUETOOTH)&&(FD_ISSET(socketBluetooth,&rdSet))){
+      if (AndroidsocketSet){
+        continue;
+      }
 			pthread_t thread;
 			Connection * connection = malloc(sizeof(Connection));
 			connection->socket=socketBluetooth;
       #if LOG_TO_FILE
 			connection->logFile = logfile;
       #endif
-			socketSet = true;
+			AndroidsocketSet = true;
 			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
 			if(createThread!=0){
 				fprintf(stderr,"Error on thread creation\n");
@@ -644,7 +662,7 @@ void *processingThread(void * arg){
 	gsl_matrix_free(rot_matrix);
 	gsl_matrix_free(RxRy);
 	gsl_matrix_free(instantaneous_rotation);
-	socketSet = false;
+	AndroidsocketSet = false;
 	return (void *)0;
 }
 
@@ -710,6 +728,8 @@ void * applicationThread(void * arg){
 	//close dialog socket
 	printf("Application disconnected\n");
 	close(socket);
+
+	ApplicationSocketSet = false;
 	return (void *)0;
 }
 
