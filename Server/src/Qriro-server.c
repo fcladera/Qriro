@@ -273,25 +273,25 @@ int main(int argc, char **argv){
 				exit(1);
 			}
 
-      if (AndroidsocketSet){
+      if (ApplicationSocketSet){
         close(dialogSocketApplication);
-        continue;
       }
+      else{
+        ApplicationSocketSet = true;
+        printf("New Application TCP connection %s:%d\n",
+            inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
 
-			printf("New Application TCP connection %s:%d\n",
-					  inet_ntoa(fromAddrApplication.sin_addr),ntohs(fromAddrApplication.sin_port));
+        // Start new thread to send the data to the application
+        pthread_t thread;
+        int *arg = malloc(sizeof(int));
+        *arg = dialogSocketApplication;
+        int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,applicationThread,arg);
+        if(createThread!=0){
+          fprintf(stderr,"Error on thread creation\n");
+          exit(1);
 
-			// Start new thread to send the data to the application
-			pthread_t thread;
-			int *arg = malloc(sizeof(int));
-			*arg = dialogSocketApplication;
-			ApplicationSocketSet = true;
-			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,applicationThread,arg);
-			if(createThread!=0){
-				fprintf(stderr,"Error on thread creation\n");
-				exit(1);
-
-			}
+        }
+      }
 
 		}
 		if((configuration->mode==TCP)&&FD_ISSET(listenSocketAndroid,&rdSet)){
@@ -305,41 +305,43 @@ int main(int argc, char **argv){
 			}
       if (AndroidsocketSet){
         close(dialogSocket);
-        continue;
       }
-			printf("Android TCP connection %s:%d\n",
-			  inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
+      else{
+        AndroidsocketSet = true;
+        printf("Android TCP connection %s:%d\n",
+            inet_ntoa(fromAddrAndroid.sin_addr),ntohs(fromAddrAndroid.sin_port));
 
-			pthread_t thread;
-			Connection * connection = malloc(sizeof(Connection));
-			connection->socket=dialogSocket;
-      #if LOG_TO_FILE
-			connection->logFile = logfile;
-      #endif
-			AndroidsocketSet = true;
-			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
-			if(createThread!=0){
-				fprintf(stderr,"Error on thread creation\n");
-				exit(1);
-			}
+        pthread_t thread;
+        Connection * connection = malloc(sizeof(Connection));
+        connection->socket=dialogSocket;
+        #if LOG_TO_FILE
+        connection->logFile = logfile;
+        #endif
+        int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
+        if(createThread!=0){
+          fprintf(stderr,"Error on thread creation\n");
+          exit(1);
+        }
+      }
 		}
 
 		if((configuration->mode==BLUETOOTH)&&(FD_ISSET(socketBluetooth,&rdSet))){
       if (AndroidsocketSet){
         continue;
       }
-			pthread_t thread;
-			Connection * connection = malloc(sizeof(Connection));
-			connection->socket=socketBluetooth;
-      #if LOG_TO_FILE
-			connection->logFile = logfile;
-      #endif
-			AndroidsocketSet = true;
-			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
-			if(createThread!=0){
-				fprintf(stderr,"Error on thread creation\n");
-				exit(1);
-
+      else{
+        AndroidsocketSet = true;
+        pthread_t thread;
+        Connection * connection = malloc(sizeof(Connection));
+        connection->socket=socketBluetooth;
+        #if LOG_TO_FILE
+        connection->logFile = logfile;
+        #endif
+        int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
+        if(createThread!=0){
+          fprintf(stderr,"Error on thread creation\n");
+          exit(1);
+      }
 			}
 		}
 	}
@@ -543,12 +545,16 @@ void *processingThread(void * arg){
 					alpha_pos_delta = alpha_vel_filtered*timeValue;
 					beta_pos_delta = beta_vel_filtered*timeValue;
 					gamma_pos_delta = gamma_vel_filtered*timeValue;
+          counter_gyro++;
 				}
 				else {
 					// only integrate last velocity value
 					alpha_pos_delta = alpha_vel*timeValue;
 					beta_pos_delta = beta_vel*timeValue;
 					gamma_pos_delta = gamma_vel*timeValue;
+          if (counter_gyro > 0){
+            counter_gyro = 0;
+          }
 				}
 
 				//Calculate rotation matrices
