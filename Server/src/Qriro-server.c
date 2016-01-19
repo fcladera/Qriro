@@ -84,7 +84,6 @@ int main(int argc, char **argv){
 	if(strcmp(argv[1],"TCP")==0){
 		// TCP mode
 		printf("TCP mode chosen\n");
-
 		configuration->mode = TCP;
 
 		// Get portAndroid number
@@ -97,7 +96,6 @@ int main(int argc, char **argv){
 		// BT mode
 		printf("BT mode chosen\n");
 		configuration->mode = BLUETOOTH;
-
 	}
 	else{
 		howToUse(argv);
@@ -110,7 +108,6 @@ int main(int argc, char **argv){
     fprintf(stderr, "Error creating TCP server for Application\n");
     exit(EXIT_FAILURE);
   }
-
 
 	//---TCP MODE------------------------------------------------------------
 	int listenSocketAndroid;
@@ -191,7 +188,6 @@ int main(int argc, char **argv){
 			perror("socketBluetooth");
 			exit(EXIT_FAILURE);
 		}
-
 
 		// set the connection parameters
 		addr.rc_family = AF_BLUETOOTH;
@@ -628,14 +624,6 @@ void *processingThread(void * arg){
 			endTime = round(spec.tv_nsec / 1.0e3);
 			printf("Execution time (ns): %g\n",endTime-startTime);
 		}
-
-		//---- send reply to client ----
-//		nb=htons(nb);
-//		if(sendto(dialogSocket,&nb,sizeof(int),0,(struct sockaddr *)&fromAddr,sizeof(fromAddr))==-1){
-//			perror("send");
-//			exit(1);
-//		}
-
 	}
 
 	//---- close dialog socket ----
@@ -676,7 +664,6 @@ void * applicationThread(void * arg){
       }
     }
 
-		//printf("%s\n",buffer);
     else if(strncmp(buffer,"GETMAT",6)==0){
 			// Send rotationAndTranslation matrix to the client. Only the useful data!
 			if(rotationAndTranslation!=NULL){
