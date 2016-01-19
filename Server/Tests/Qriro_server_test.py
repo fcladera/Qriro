@@ -53,6 +53,7 @@ class TestQriroServerMethods(unittest.TestCase):
     # disconnect both sockets
     self.AndroidSocket.close()
     self.ApplicationSocket.close()
+    time.sleep(0.5)
 
   def sendCommandToServer(self, commandId):
     """Send a command to Qriro.server via Android socket"""
