@@ -229,12 +229,13 @@ int main(int argc, char **argv){
 	//=======================================================================
 	// Log file (useful to store values from sensors in a file to analyze them later)
 
+  #if LOG_TO_FILE
 	FILE *logfile = NULL;
-	if(LOG_TO_FILE){
-		fprintf(stderr,"WARNING: Log enabled!\nThe values will be stored in points.dat\n");
-		logfile = fopen("points.dat","w");
-		if (logfile==NULL) perror(__FILE__);
-	}
+
+	fprintf(stderr,"WARNING: Log enabled!\nThe values will be stored in points.dat\n");
+	logfile = fopen("points.dat","w");
+	if (logfile==NULL) perror(__FILE__);
+  #endif
 
 	// Clear global matrix qnd set some constant values
 	rotationAndTranslation = gsl_matrix_calloc(4,4);
@@ -297,7 +298,9 @@ int main(int argc, char **argv){
 			pthread_t thread;
 			Connection * connection = malloc(sizeof(Connection));
 			connection->socket=dialogSocket;
+      #if LOG_TO_FILE
 			connection->logFile = logfile;
+      #endif
 			socketSet = true;
 			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
 			if(createThread!=0){
@@ -310,7 +313,9 @@ int main(int argc, char **argv){
 			pthread_t thread;
 			Connection * connection = malloc(sizeof(Connection));
 			connection->socket=socketBluetooth;
+      #if LOG_TO_FILE
 			connection->logFile = logfile;
+      #endif
 			socketSet = true;
 			int createThread = pthread_create(&thread,(pthread_attr_t *) NULL,processingThread,(void *)connection);
 			if(createThread!=0){
@@ -337,9 +342,10 @@ int main(int argc, char **argv){
 	pclose(gp_latency);
   #endif
 
-	if(LOG_TO_FILE){
-	  fclose(logfile);
-	}
+  #if LOG_TO_FILE
+	fclose(logfile);
+  #endif
+
 	free(configuration);
 	free(broadcastMessage);
 	return EXIT_SUCCESS;
@@ -350,7 +356,9 @@ void *processingThread(void * arg){
 	// Program Variables
 	Connection * connection = (Connection *)arg;
 	int dialogSocket = connection->socket;
+  #if LOG_TO_FILE
 	FILE * logfile = connection->logFile;
+  #endif
 	free(connection);
 
 	// Screen, integration
@@ -414,9 +422,9 @@ void *processingThread(void * arg){
 			clock_gettime(CLOCK_REALTIME, &spec);
 			startTime = round(spec.tv_nsec / 1.0e3);
 		}
-		if(LOG_TO_FILE){
-			fprintf(logfile,"%s",buffer);
-		}
+    #if LOG_TO_FILE
+		fprintf(logfile,"%s",buffer);
+    #endif
 		buffer[nb]='\0';
 
 		//printf("from %s %d : %d bytes:\n%s\n",

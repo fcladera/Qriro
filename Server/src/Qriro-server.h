@@ -41,7 +41,9 @@ typedef struct configuration{
 
 typedef struct connection{
 	int socket;
+  #if LOG_TO_FILE
 	FILE * logFile;
+  #endif
 } Connection;
 
 typedef struct broadcastMessage{
