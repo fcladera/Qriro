@@ -19,7 +19,6 @@
 #include <sys/socket.h>
 #include <sys/mman.h>
 #include <netdb.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -31,6 +30,7 @@
 #include <gsl/gsl_blas.h>
 
 #include "FIFOlib/fifo.h"
+#include "TCPlib/TCPServer.h"
 #include "Qriro-server.h"
 
 //=======================================================================
@@ -99,73 +99,22 @@ int main(int argc, char **argv){
 
 	//=======================================================================
 	// Socket creation and listening
+  int listenSocketApplication;
+  if (createTCPServer(portApplication, &listenSocketApplication) == -1){
+    fprintf(stderr, "Error creating TCP server for Application\n");
+    exit(EXIT_FAILURE);
+  }
 
-	// Listen socket for the Application
-	int listenSocketApplication = socket(PF_INET,SOCK_STREAM,0);
-	if(listenSocketApplication==-1){
-		perror("socketApplication");
-		exit(1);
-	}
-
-	// Avoid problems if the program is quickly restarted
-	// http://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t
-	const int on=1;
-	if(setsockopt(listenSocketApplication,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
-		perror("setsockoptApplication");
-		exit(1);
-	}
-
-	// bound to any local address on the specified port
-	struct sockaddr_in myAddrApplication;
-		myAddrApplication.sin_family=AF_INET;
-		myAddrApplication.sin_port=htons(portApplication);
-		myAddrApplication.sin_addr.s_addr=htonl(INADDR_ANY);
-		if(bind(listenSocketApplication,(struct sockaddr *)&myAddrApplication,sizeof(myAddrApplication))==-1){
-			perror("bindApplication");
-			exit(1);
-
-	}
-
-	// Accept connections
-	if(listen(listenSocketApplication,10)==-1){
-			perror("listenApplication");
-			exit(1);
-	}
 
 	//---TCP MODE------------------------------------------------------------
-	int listenSocketAndroid=-1;
-	if(configuration->mode==TCP){	// Create TCP socket for the program
-		// Listen socket for Android
-		listenSocketAndroid = socket(PF_INET,SOCK_STREAM,0);
-		if(listenSocketAndroid==-1){
-			perror("socketAndroid");
-			exit(1);
-		}
-
-		// Avoid problems if the program is quickly restarted
-		const int on=1;
-		if(setsockopt(listenSocketAndroid,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))==-1){
-			perror("setsockoptAndroid");
-			exit(1);
-		}
-
-		// bound to any local address on the specified port
-		struct sockaddr_in myAddrAndroid;
-		myAddrAndroid.sin_family=AF_INET;
-		myAddrAndroid.sin_port=htons(portAndroid);
-		myAddrAndroid.sin_addr.s_addr=htonl(INADDR_ANY);
-		if(bind(listenSocketAndroid,(struct sockaddr *)&myAddrAndroid,sizeof(myAddrAndroid))==-1){
-			perror("bindAndroid");
-			exit(1);
-
-		}
-
-		// Accepts connections
-		if(listen(listenSocketAndroid,10)==-1){
-			perror("listenAndroid");
-			exit(1);
-		}
-	}
+	int listenSocketAndroid;
+	if(configuration->mode==TCP){
+    // Create TCP socket to communicate with the Android phone
+    if (createTCPServer(portAndroid, &listenSocketAndroid) == -1){
+      fprintf(stderr, "Error creating TCP server for Application\n");
+      exit(EXIT_FAILURE);
+    }
+  }
 
 	//---BLUETOOTH MODE------------------------------------------------------
 	int socketBluetooth=-1;
