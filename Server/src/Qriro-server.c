@@ -39,6 +39,11 @@ gsl_matrix *rotationAndTranslation = NULL; // Transformation matrix calculated
 Configuration *configuration; // Configuration parameters of Qriro-server
 BroadcastMessage *broadcastMessage; // Message from server to phone
 
+#if PLOT_WITH_GNUPLOT
+FILE  *gp_screen,  *gp_gyro, *gp_latency;
+#endif
+
+
 volatile bool socketSet = false;
 // http://www.gnuplot.info/files/gpReadMouseTest.c <= C y Gnuplot
 // feedgnuplot
@@ -201,13 +206,13 @@ int main(int argc, char **argv){
 
 	//=======================================================================
 	// Gnuplot (feedplot) pipe
+  #if PLOT_WITH_GNUPLOT
 
 	/* Create a FIFO we later use for communication gnuplot => our program. */
-	FILE  *gp_accel,  *gp_gyro, *gp_latency;
 	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'value' --xlabel sample > /dev/null";
-	if (NULL == (gp_accel = popen(command,"w"))) {
+	if (NULL == (gp_screen = popen(command,"w"))) {
 	  perror("gnuplot");
-	  pclose(gp_accel);
+	  pclose(gp_screen);
 	  return 1;
 	}
 	if (NULL == (gp_gyro = popen(command,"w"))) {
@@ -222,6 +227,7 @@ int main(int argc, char **argv){
 	}
 
 	printf("Connected to gnuplot.\n");
+  #endif
 
 	//=======================================================================
 	// Log file (useful to store values from sensors in a file to analyze them later)
@@ -327,10 +333,12 @@ int main(int argc, char **argv){
 		close(socketBluetooth);
 	}
 
+  #if PLOT_WITH_GNUPLOT
 	//----close gnuplot-----
-	pclose(gp_accel);
+	pclose(gp_screen);
 	pclose(gp_gyro);
 	pclose(gp_latency);
+  #endif
 
 	if(LOG_TO_FILE){
 	  fclose(logfile);
@@ -578,10 +586,12 @@ void *processingThread(void * arg){
 				gsl_matrix_set(rotationAndTranslation,2,1,m21);
 				gsl_matrix_set(rotationAndTranslation,2,2,m22);
 
-				//fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(new_alpha_pos),toDegrees(new_beta_pos),toDegrees(new_gamma_pos));
-				//fflush(gp_gyro);
-				//fprintf(gp_latency,"%lf\n",timeValue);
-				//fflush(gp_latency);
+        #if PLOT_WITH_GNUPLOT
+				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(alpha_pos_delta),toDegrees(beta_pos_delta),toDegrees(gamma_pos_delta));
+				fflush(gp_gyro);
+				fprintf(gp_latency,"%lf\n",timeValue);
+				fflush(gp_latency);
+        #endif
 
 			}
 			else if(sensorType=='S'){
@@ -596,8 +606,10 @@ void *processingThread(void * arg){
 				gsl_matrix_set(rotationAndTranslation,1,3,screen_y);
 				gsl_matrix_set(rotationAndTranslation,2,3,screen_z);
 
-				//fprintf(gp_accel, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
-				//fflush(gp_accel);
+        #if PLOT_WITH_GNUPLOT
+				fprintf(gp_screen, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
+				fflush(gp_screen);
+        #endif
 
 			}
 			else{

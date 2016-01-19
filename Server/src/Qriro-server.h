@@ -17,6 +17,7 @@
 
 #define LOG_TO_FILE 0
 #define MEASURE_EXECUTION_TIME 0
+#define PLOT_WITH_GNUPLOT 0
 
 //=======================================================================
 // Functions
