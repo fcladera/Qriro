@@ -1,34 +1,3 @@
-//=======================================================================
-// Includes
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <math.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <pthread.h>
-#include <time.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/mman.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_cblas.h>
-#include <gsl/gsl_blas.h>
-
-#include "FIFOlib/fifo.h"
-#include "TCPlib/TCPServer.h"
-#include "Bluetoothlib/BluetoothClient.h"
 #include "Qriro-server.h"
 
 //=======================================================================
