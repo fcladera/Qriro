@@ -298,8 +298,11 @@ int main(int argc, char **argv){
 	fclose(logfile);
   #endif
 
+  // Free program variables and transformation matrix
+  gsl_matrix_free(rotationAndTranslation);
 	free(configuration);
 	free(broadcastMessage);
+
 	return EXIT_SUCCESS;
 }
 
