@@ -58,6 +58,10 @@ int main(int argc, char **argv){
 	configuration = malloc(sizeof(configuration));
 	broadcastMessage = malloc(sizeof(broadcastMessage));
 
+	// Allocate transformation matrix memory and set to identity
+	rotationAndTranslation = gsl_matrix_calloc(4,4);
+	gsl_matrix_set_identity(rotationAndTranslation);
+
 	//=======================================================================
 	// Ports for TCP connections
 	int portApplication;
@@ -166,9 +170,6 @@ int main(int argc, char **argv){
 	if (logfile==NULL) perror(__FILE__);
   #endif
 
-	// Clear global matrix qnd set some constant values
-	rotationAndTranslation = gsl_matrix_calloc(4,4);
-	gsl_matrix_set_identity(rotationAndTranslation);
 	//=======================================================================
 	// Program loop
   // Launch threads on connection of both an application or an Android
