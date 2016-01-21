@@ -7,7 +7,7 @@ Configuration *configuration; // Configuration parameters of Qriro-server
 BroadcastMessage *broadcastMessage; // Message from server to phone
 
 #if PLOT_WITH_GNUPLOT
-FILE  *gp_screen,  *gp_gyro, *gp_latency;
+GnuPlotPipe  gp_screen,  gp_gyro, gp_latency;
 #endif
 
 volatile bool AndroidsocketSet = false;
@@ -106,26 +106,21 @@ int main(int argc, char **argv){
 	//=======================================================================
 	// Gnuplot (feedplot) pipe
   #if PLOT_WITH_GNUPLOT
-
-	/* Create a FIFO we later use for communication gnuplot => our program. */
-	char * command = "feedgnuplot --lines --stream 0.1 --xlen 1000 --ylabel 'value' --xlabel sample > /dev/null";
-	if (NULL == (gp_screen = popen(command,"w"))) {
-	  perror("gnuplot");
-	  pclose(gp_screen);
-	  return 1;
-	}
-	if (NULL == (gp_gyro = popen(command,"w"))) {
-		  perror("gnuplot");
-		  pclose(gp_gyro);
-		  return 1;
-	}
-	if (NULL == (gp_latency = popen(command,"w"))) {
-		  perror("gnuplot");
-		  pclose(gp_latency);
-		  return 1;
-	}
-
-	printf("Connected to gnuplot.\n");
+  // Create pipes we later use for communication withe gnuplot
+  if (createGnuPlotPipe(&gp_screen) == -1){
+    fprintf(stderr, "Error creating Screen Pipe - GnuPlot");
+    exit(EXIT_FAILURE);
+  }
+  printf("%p\n", gp_screen);
+  if (createGnuPlotPipe(&gp_gyro) == -1){
+    fprintf(stderr, "Error creating Gyro Pipe - GnuPlot");
+    exit(EXIT_FAILURE);
+  }
+  if (createGnuPlotPipe(&gp_latency) == -1){
+    fprintf(stderr, "Error creating Latency Pipe - GnuPlot");
+    exit(EXIT_FAILURE);
+  }
+  printf("Connected to gnuplot.\n");
   #endif
 
 	//=======================================================================
@@ -257,10 +252,10 @@ int main(int argc, char **argv){
 	}
 
   #if PLOT_WITH_GNUPLOT
-	//----close gnuplot-----
-	pclose(gp_screen);
-	pclose(gp_gyro);
-	pclose(gp_latency);
+	// Close GnuPlot pipes
+	closeGnuPlotPipe(gp_screen);
+	closeGnuPlotPipe(gp_gyro);
+	closeGnuPlotPipe(gp_latency);
   #endif
 
   #if LOG_TO_FILE
@@ -520,10 +515,11 @@ void *processingThread(void * arg){
 				gsl_matrix_set(rotationAndTranslation,2,2,m22);
 
         #if PLOT_WITH_GNUPLOT
-				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",RAD_TO_DEG(alpha_pos_delta),RAD_TO_DEG(beta_pos_delta),RAD_TO_DEG(gamma_pos_delta));
-				fflush(gp_gyro);
-				fprintf(gp_latency,"%lf\n",timeValue);
-				fflush(gp_latency);
+        writeToGnuPlotPipe(gp_gyro,
+            RAD_TO_DEG(alpha_pos_delta),
+            RAD_TO_DEG(beta_pos_delta),
+            RAD_TO_DEG(gamma_pos_delta));
+        writeToGnuPlotPipe(gp_latency, timeValue, 0, 0);
         #endif
 
 			}
@@ -540,8 +536,7 @@ void *processingThread(void * arg){
 				gsl_matrix_set(rotationAndTranslation,2,3,screen_z);
 
         #if PLOT_WITH_GNUPLOT
-				fprintf(gp_screen, "%lf\t%lf\t%lf\n",screen_x,screen_y,screen_z);
-				fflush(gp_screen);
+				writeToGnuPlotPipe(gp_screen, screen_x, screen_y, screen_z);
         #endif
 
 			}

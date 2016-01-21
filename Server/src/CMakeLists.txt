@@ -8,6 +8,7 @@ include_directories ("${PROJECT_SOURCE_DIR}/FIFOlib")
 add_subdirectory (FIFOlib)
 add_subdirectory (TCPlib)
 add_subdirectory (Bluetoothlib)
+add_subdirectory (GnuPlotUtils)
 
 add_executable(Qriro-server Qriro-server.c)
 
@@ -19,6 +20,9 @@ target_link_libraries(Qriro-server TCPlib)
 
 # Bluetoothlib
 target_link_libraries(Qriro-server Bluetoothlib)
+
+# GnuPlotUtils
+target_link_libraries(Qriro-server GnuPlotUtils)
 
 # System libs
 target_link_libraries(Qriro-server pthread m gsl gslcblas bluetooth)

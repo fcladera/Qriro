@@ -38,6 +38,7 @@
 #include "FIFOlib/fifo.h"
 #include "TCPlib/TCPServer.h"
 #include "Bluetoothlib/BluetoothClient.h"
+#include "GnuPlotUtils/GnuPlotUtils.h"
 
 
 //=======================================================================
