@@ -7,6 +7,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -g -O0")
 include_directories ("${PROJECT_SOURCE_DIR}/FIFOlib")
 add_subdirectory (FIFOlib)
 add_subdirectory (TCPlib)
+add_subdirectory (Bluetoothlib)
 
 add_executable(Qriro-server Qriro-server.c)
 
@@ -15,6 +16,9 @@ target_link_libraries(Qriro-server FIFOlib)
 
 # TCPlib
 target_link_libraries(Qriro-server TCPlib)
+
+# Bluetoothlib
+target_link_libraries(Qriro-server Bluetoothlib)
 
 # System libs
 target_link_libraries(Qriro-server pthread m gsl gslcblas bluetooth)
