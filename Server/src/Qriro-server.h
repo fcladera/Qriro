@@ -20,9 +20,12 @@
 #define PLOT_WITH_GNUPLOT 0
 
 //=======================================================================
+// Macros
+#define RAD_TO_DEG(radians) ((radians)*(180.0/M_PI))
+
+//=======================================================================
 // Functions
 
-double toDegrees(double);
 void printMatrix(gsl_matrix * A);
 void howToUse();
 

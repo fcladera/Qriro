@@ -548,7 +548,7 @@ void *processingThread(void * arg){
 				gsl_matrix_set(rotationAndTranslation,2,2,m22);
 
         #if PLOT_WITH_GNUPLOT
-				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",toDegrees(alpha_pos_delta),toDegrees(beta_pos_delta),toDegrees(gamma_pos_delta));
+				fprintf(gp_gyro, "%lf\t%lf\t%lf\n",RAD_TO_DEG(alpha_pos_delta),RAD_TO_DEG(beta_pos_delta),RAD_TO_DEG(gamma_pos_delta));
 				fflush(gp_gyro);
 				fprintf(gp_latency,"%lf\n",timeValue);
 				fflush(gp_latency);
@@ -669,10 +669,6 @@ void * applicationThread(void * arg){
 
 	ApplicationSocketSet = false;
 	return (void *)0;
-}
-
-double toDegrees(double radians){
-	return (radians*180./M_PI);
 }
 
 void printMatrix(gsl_matrix *A){
