@@ -32,7 +32,7 @@
 #include "Qriro-server.h"
 
 //=======================================================================
-// Global variables
+// Global variables shared between threads and the main program
 gsl_matrix *rotationAndTranslation = NULL; // Transformation matrix calculated
 Configuration *configuration; // Configuration parameters of Qriro-server
 BroadcastMessage *broadcastMessage; // Message from server to phone
@@ -40,7 +40,6 @@ BroadcastMessage *broadcastMessage; // Message from server to phone
 #if PLOT_WITH_GNUPLOT
 FILE  *gp_screen,  *gp_gyro, *gp_latency;
 #endif
-
 
 volatile bool AndroidsocketSet = false;
 volatile bool ApplicationSocketSet = false;
@@ -55,19 +54,20 @@ volatile bool ApplicationSocketSet = false;
 
 int main(int argc, char **argv){
 	//=======================================================================
-	// Program variables allocation
+	// Allocate program variables
 	configuration = malloc(sizeof(configuration));
 	broadcastMessage = malloc(sizeof(broadcastMessage));
 
 	//=======================================================================
-	// Connection variables
+	// Ports for TCP connections
 	int portApplication;
 
 	// for TCP mode
 	int portAndroid;
 
-	//=======================================================================
-	// Determine connection mode with the phone (bluetooth, TCP), port (TCP) and address (BT)
+  //=======================================================================
+  // Determine connection mode with the phone (bluetooth, TCP), port
+  // (TCP) and address (BT)
 
 	// check arguments
 	if(argc!=4){
@@ -102,6 +102,8 @@ int main(int argc, char **argv){
 
 	//=======================================================================
 	// Socket creation and listening
+
+	//---APPLICATION---------------------------------------------------------
   int listenSocketApplication;
   if (createTCPServer(portApplication, &listenSocketApplication) == -1){
     fprintf(stderr, "Error creating TCP server for Application\n");
@@ -113,7 +115,7 @@ int main(int argc, char **argv){
 	if(configuration->mode==TCP){
     // Create TCP socket to communicate with the Android phone
     if (createTCPServer(portAndroid, &listenSocketAndroid) == -1){
-      fprintf(stderr, "Error creating TCP server for Application\n");
+      fprintf(stderr, "Error creating TCP server for Android\n");
       exit(EXIT_FAILURE);
     }
   }
@@ -167,6 +169,10 @@ int main(int argc, char **argv){
 	// Clear global matrix qnd set some constant values
 	rotationAndTranslation = gsl_matrix_calloc(4,4);
 	gsl_matrix_set_identity(rotationAndTranslation);
+	//=======================================================================
+	// Program loop
+  // Launch threads on connection of both an application or an Android
+  // phone
 
 	for(;;){
 		fd_set rdSet;
@@ -266,7 +272,7 @@ int main(int argc, char **argv){
         if(createThread!=0){
           fprintf(stderr,"Error on thread creation\n");
           exit(1);
-      }
+        }
 			}
 		}
 	}
